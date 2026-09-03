@@ -1234,3 +1234,20 @@ button {
     font-size: 24px;
   }
 }
+.floating-button {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.floating-button:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 12px 28px rgba(103, 84, 231, 0.35);
+  filter: brightness(1.05);
+}
+
+.floating-button:active {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: 0 6px 16px rgba(103, 84, 231, 0.28);
+}
