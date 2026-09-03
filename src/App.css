@@ -1251,3 +1251,71 @@ button {
   transform: translateY(-1px) scale(0.98);
   box-shadow: 0 6px 16px rgba(103, 84, 231, 0.28);
 }
+/* =========================
+   CALENDARIO - EDITAR / ELIMINAR
+========================= */
+
+.calendar-event-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.calendar-edit-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #ded9ff;
+  border-radius: 10px;
+  background: #f6f4ff;
+  color: #6754e7;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.calendar-edit-button:hover {
+  transform: translateY(-1px);
+  background: #eeebff;
+  box-shadow: 0 6px 16px rgba(103, 84, 231, 0.16);
+}
+
+.calendar-modal-actions {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.calendar-modal-actions-right {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.event-delete-confirm-overlay {
+  z-index: 1250;
+}
+
+@media (max-width: 620px) {
+  .calendar-modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .calendar-modal-actions-right {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .calendar-modal-actions-right button,
+  .calendar-modal-actions > .member-delete-button {
+    flex: 1;
+  }
+
+  .calendar-event-meta {
+    justify-content: flex-start;
+  }
+}

@@ -65,6 +65,11 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [mostrarConfirmacionSalir, setMostrarConfirmacionSalir] =
     useState(false)
 
+  const [eventoEditando, setEventoEditando] = useState(null)
+  const [mostrarConfirmacionEliminarEvento, setMostrarConfirmacionEliminarEvento] =
+    useState(false)
+  const [eliminandoEvento, setEliminandoEvento] = useState(false)
+
   useEffect(() => {
     const cargarSesion = async () => {
       const { data } = await supabase.auth.getSession()
@@ -461,6 +466,7 @@ const eliminarIntegrante = async () => {
 }
   const cerrarModalEvento = () => {
     setMostrarModalEvento(false)
+    setEventoEditando(null)
     setTituloEvento('')
     setDescripcionEvento('')
     setFechaEvento('')
@@ -469,6 +475,46 @@ const eliminarIntegrante = async () => {
     setRecordatorioEvento('')
     setAsignadosEvento([])
     setMensajeEvento('')
+  }
+
+  const abrirNuevoEvento = () => {
+    setEventoEditando(null)
+    setTituloEvento('')
+    setDescripcionEvento('')
+    setFechaEvento('')
+    setHoraEvento('')
+    setTodoElDiaEvento(false)
+    setRecordatorioEvento('')
+    setAsignadosEvento([])
+    setMensajeEvento('')
+    setMostrarModalEvento(true)
+  }
+
+  const abrirEditarEvento = (evento) => {
+    const fecha = new Date(evento.fecha_inicio)
+
+    const año = fecha.getFullYear()
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+    const dia = String(fecha.getDate()).padStart(2, '0')
+    const hora = String(fecha.getHours()).padStart(2, '0')
+    const minutos = String(fecha.getMinutes()).padStart(2, '0')
+
+    setEventoEditando(evento)
+    setTituloEvento(evento.titulo)
+    setDescripcionEvento(evento.descripcion || '')
+    setFechaEvento(`${año}-${mes}-${dia}`)
+    setHoraEvento(evento.todo_el_dia ? '' : `${hora}:${minutos}`)
+    setTodoElDiaEvento(evento.todo_el_dia)
+    setRecordatorioEvento(
+      evento.recordatorio_minutos === null
+        ? ''
+        : String(evento.recordatorio_minutos)
+    )
+    setAsignadosEvento(
+      evento.asignados.map((miembro) => miembro.id)
+    )
+    setMensajeEvento('')
+    setMostrarModalEvento(true)
   }
 
   const alternarAsignadoEvento = (miembroId) => {
@@ -591,6 +637,180 @@ const eliminarIntegrante = async () => {
     } finally {
       setGuardandoEvento(false)
     }
+  }
+
+  const guardarEdicionEvento = async (e) => {
+    e.preventDefault()
+    setMensajeEvento('')
+
+    if (!eventoEditando) return
+
+    const tituloLimpio = tituloEvento.trim()
+
+    if (!tituloLimpio) {
+      setMensajeEvento('Escribe un título para el evento.')
+      return
+    }
+
+    if (!fechaEvento) {
+      setMensajeEvento('Selecciona una fecha para el evento.')
+      return
+    }
+
+    if (!todoElDiaEvento && !horaEvento) {
+      setMensajeEvento('Selecciona una hora para el evento.')
+      return
+    }
+
+    if (asignadosEvento.length === 0) {
+      setMensajeEvento('Selecciona al menos un integrante.')
+      return
+    }
+
+    const horaInicio = todoElDiaEvento ? '00:00' : horaEvento
+    const fechaInicioLocal = new Date(
+      `${fechaEvento}T${horaInicio}:00`
+    )
+
+    if (Number.isNaN(fechaInicioLocal.getTime())) {
+      setMensajeEvento('La fecha u hora no es válida.')
+      return
+    }
+
+    try {
+      setGuardandoEvento(true)
+
+      const { data: eventoActualizado, error: errorEvento } = await supabase
+        .from('eventos')
+        .update({
+          titulo: tituloLimpio,
+          descripcion: descripcionEvento.trim() || null,
+          fecha_inicio: fechaInicioLocal.toISOString(),
+          todo_el_dia: todoElDiaEvento,
+          recordatorio_minutos:
+            recordatorioEvento === ''
+              ? null
+              : Number(recordatorioEvento)
+        })
+        .eq('id', eventoEditando.id)
+        .select()
+        .single()
+
+      if (errorEvento) {
+        throw errorEvento
+      }
+
+      const { error: errorEliminarAsignados } = await supabase
+        .from('evento_asignados')
+        .delete()
+        .eq('evento_id', eventoEditando.id)
+
+      if (errorEliminarAsignados) {
+        throw errorEliminarAsignados
+      }
+
+      const filasAsignados = asignadosEvento.map((miembroId) => ({
+        evento_id: eventoEditando.id,
+        miembro_id: miembroId
+      }))
+
+      const { error: errorAsignados } = await supabase
+        .from('evento_asignados')
+        .insert(filasAsignados)
+
+      if (errorAsignados) {
+        throw errorAsignados
+      }
+
+      const miembrosAsignados = miembros.filter((miembro) =>
+        asignadosEvento.includes(miembro.id)
+      )
+
+      setEventos((actuales) =>
+        actuales
+          .map((evento) =>
+            evento.id === eventoEditando.id
+              ? {
+                  ...eventoActualizado,
+                  asignados: miembrosAsignados
+                }
+              : evento
+          )
+          .sort(
+            (a, b) =>
+              new Date(a.fecha_inicio) - new Date(b.fecha_inicio)
+          )
+      )
+
+      cerrarModalEvento()
+    } catch (error) {
+      console.error('Error al editar evento:', error)
+      setMensajeEvento('No se pudieron guardar los cambios.')
+    } finally {
+      setGuardandoEvento(false)
+    }
+  }
+
+  const eliminarEvento = async () => {
+    if (!eventoEditando) return
+
+    try {
+      setEliminandoEvento(true)
+
+      const { error } = await supabase
+        .from('eventos')
+        .delete()
+        .eq('id', eventoEditando.id)
+
+      if (error) {
+        throw error
+      }
+
+      setEventos((actuales) =>
+        actuales.filter(
+          (evento) => evento.id !== eventoEditando.id
+        )
+      )
+
+      setMostrarConfirmacionEliminarEvento(false)
+      cerrarModalEvento()
+    } catch (error) {
+      console.error('Error al eliminar evento:', error)
+      setMostrarConfirmacionEliminarEvento(false)
+      setMensajeEvento('No se pudo eliminar el evento.')
+    } finally {
+      setEliminandoEvento(false)
+    }
+  }
+
+  const obtenerTextoRecordatorio = (minutos) => {
+    if (minutos === null || minutos === undefined) {
+      return ''
+    }
+
+    if (minutos === 0) {
+      return 'Al comenzar'
+    }
+
+    if (minutos < 60) {
+      return `${minutos} min antes`
+    }
+
+    if (minutos % 1440 === 0) {
+      const dias = minutos / 1440
+      return dias === 1
+        ? '1 día antes'
+        : `${dias} días antes`
+    }
+
+    if (minutos % 60 === 0) {
+      const horas = minutos / 60
+      return horas === 1
+        ? '1 hora antes'
+        : `${horas} horas antes`
+    }
+
+    return `${minutos} min antes`
   }
 
   const formatearFechaEvento = (fechaIso, todoElDia = false) => {
@@ -963,7 +1183,7 @@ const eliminarIntegrante = async () => {
 
             <button
               className="floating-button"
-              onClick={() => setMostrarModalEvento(true)}
+              onClick={abrirNuevoEvento}
               title="Nuevo evento"
             >
               ＋
@@ -976,9 +1196,7 @@ const eliminarIntegrante = async () => {
             <div className="calendar-management-header calendar-actions-only">
               <button
                 className="add-member-button"
-                onClick={() =>
-                  setMostrarModalEvento(true)
-                }
+                onClick={abrirNuevoEvento}
               >
                 ＋ Nuevo evento
               </button>
@@ -1003,9 +1221,7 @@ const eliminarIntegrante = async () => {
 
                 <button
                   className="member-save-button"
-                  onClick={() =>
-                    setMostrarModalEvento(true)
-                  }
+                  onClick={abrirNuevoEvento}
                 >
                   Crear primer evento
                 </button>
@@ -1064,9 +1280,9 @@ const eliminarIntegrante = async () => {
                             null && (
                             <span className="calendar-reminder">
                               🔔{' '}
-                              {evento.recordatorio_minutos === 0
-                                ? 'Al comenzar'
-                                : `${evento.recordatorio_minutos} min antes`}
+                              {obtenerTextoRecordatorio(
+                                evento.recordatorio_minutos
+                              )}
                             </span>
                           )}
                         </div>
@@ -1110,10 +1326,22 @@ const eliminarIntegrante = async () => {
                             ))}
                           </div>
 
-                          <small className="calendar-created-by">
-                            Creado por:{' '}
-                            {creador?.nombre || 'Miembro'}
-                          </small>
+                          <div className="calendar-event-meta">
+                            <small className="calendar-created-by">
+                              Creado por:{' '}
+                              {creador?.nombre || 'Miembro'}
+                            </small>
+
+                            {evento.creado_por === usuario.id && (
+                              <button
+                                type="button"
+                                className="calendar-edit-button"
+                                onClick={() => abrirEditarEvento(evento)}
+                              >
+                                ✏️ Editar
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -1241,10 +1469,14 @@ const eliminarIntegrante = async () => {
             <div className="member-modal-header">
               <div>
                 <p className="eyebrow">
-                  NUEVO EVENTO
+                  {eventoEditando ? 'EDITAR EVENTO' : 'NUEVO EVENTO'}
                 </p>
 
-                <h2>Agregar al calendario</h2>
+                <h2>
+                  {eventoEditando
+                    ? 'Editar evento'
+                    : 'Agregar al calendario'}
+                </h2>
               </div>
 
               <button
@@ -1256,7 +1488,13 @@ const eliminarIntegrante = async () => {
               </button>
             </div>
 
-            <form onSubmit={crearEvento}>
+            <form
+              onSubmit={
+                eventoEditando
+                  ? guardarEdicionEvento
+                  : crearEvento
+              }
+            >
               <div className="member-form-field">
                 <label>Título</label>
 
@@ -1441,25 +1679,50 @@ const eliminarIntegrante = async () => {
                 </div>
               )}
 
-              <div className="member-modal-actions">
-                <button
-                  type="button"
-                  className="member-cancel-button"
-                  onClick={cerrarModalEvento}
-                  disabled={guardandoEvento}
-                >
-                  Cancelar
-                </button>
+              <div
+                className="member-modal-actions calendar-modal-actions"
+              >
+                {eventoEditando && (
+                  <button
+                    type="button"
+                    className="member-delete-button"
+                    onClick={() =>
+                      setMostrarConfirmacionEliminarEvento(true)
+                    }
+                    disabled={
+                      guardandoEvento || eliminandoEvento
+                    }
+                  >
+                    Eliminar evento
+                  </button>
+                )}
 
-                <button
-                  type="submit"
-                  className="member-save-button"
-                  disabled={guardandoEvento}
-                >
-                  {guardandoEvento
-                    ? 'Guardando...'
-                    : 'Crear evento'}
-                </button>
+                <div className="calendar-modal-actions-right">
+                  <button
+                    type="button"
+                    className="member-cancel-button"
+                    onClick={cerrarModalEvento}
+                    disabled={
+                      guardandoEvento || eliminandoEvento
+                    }
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="member-save-button"
+                    disabled={
+                      guardandoEvento || eliminandoEvento
+                    }
+                  >
+                    {guardandoEvento
+                      ? 'Guardando...'
+                      : eventoEditando
+                      ? 'Guardar cambios'
+                      : 'Crear evento'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1722,6 +1985,57 @@ const eliminarIntegrante = async () => {
           </div>
         </div>
       )}
+      {mostrarConfirmacionEliminarEvento && eventoEditando && (
+        <div
+          className="member-modal-overlay event-delete-confirm-overlay"
+          onClick={() =>
+            setMostrarConfirmacionEliminarEvento(false)
+          }
+        >
+          <div
+            className="member-modal delete-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="delete-confirm-icon">
+              🗑️
+            </div>
+
+            <h2>
+              ¿Eliminar “{eventoEditando.titulo}”?
+            </h2>
+
+            <p className="delete-confirm-text">
+              El evento se eliminará del calendario de toda la familia.
+              Esta acción no se puede deshacer.
+            </p>
+
+            <div className="delete-confirm-actions">
+              <button
+                type="button"
+                className="member-cancel-button"
+                onClick={() =>
+                  setMostrarConfirmacionEliminarEvento(false)
+                }
+                disabled={eliminandoEvento}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="member-delete-confirm-button"
+                onClick={eliminarEvento}
+                disabled={eliminandoEvento}
+              >
+                {eliminandoEvento
+                  ? 'Eliminando...'
+                  : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {mostrarConfirmacionEliminar && miembroEditando && (
   <div
     className="member-modal-overlay"
