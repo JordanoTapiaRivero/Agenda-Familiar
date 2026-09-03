@@ -70,6 +70,22 @@ const [mensajeEdicion, setMensajeEdicion] =
     useState(false)
   const [eliminandoEvento, setEliminandoEvento] = useState(false)
 
+  const [tareas, setTareas] = useState([])
+  const [cargandoTareas, setCargandoTareas] = useState(false)
+  const [mostrarModalTarea, setMostrarModalTarea] = useState(false)
+  const [nombreTarea, setNombreTarea] = useState('')
+  const [descripcionTarea, setDescripcionTarea] = useState('')
+  const [prioridadTarea, setPrioridadTarea] = useState('media')
+  const [fechaLimiteTarea, setFechaLimiteTarea] = useState('')
+  const [asignadosTarea, setAsignadosTarea] = useState([])
+  const [guardandoTarea, setGuardandoTarea] = useState(false)
+  const [mensajeTarea, setMensajeTarea] = useState('')
+  const [tareasEliminandose, setTareasEliminandose] = useState([])
+  const [tareaEditando, setTareaEditando] = useState(null)
+  const [mostrarConfirmacionEliminarTarea, setMostrarConfirmacionEliminarTarea] =
+    useState(false)
+  const [eliminandoTarea, setEliminandoTarea] = useState(false)
+
   useEffect(() => {
     const cargarSesion = async () => {
       const { data } = await supabase.auth.getSession()
@@ -237,6 +253,83 @@ const [mensajeEdicion, setMensajeEdicion] =
     }
 
     cargarEventos()
+  }, [familia?.id])
+
+  useEffect(() => {
+    const cargarTareas = async () => {
+      if (!familia?.id) {
+        setTareas([])
+        return
+      }
+
+      try {
+        setCargandoTareas(true)
+
+        const { data: tareasData, error: errorTareas } = await supabase
+          .from('tareas_familiares')
+          .select(`
+            id,
+            familia_id,
+            nombre,
+            descripcion,
+            prioridad,
+            fecha_limite,
+            estado,
+            creado_por,
+            fecha_completada,
+            created_at
+          `)
+          .eq('familia_id', familia.id)
+          .order('created_at', { ascending: false })
+
+        if (errorTareas) {
+          throw errorTareas
+        }
+
+        const idsTareas = (tareasData ?? []).map((tarea) => tarea.id)
+
+        let asignaciones = []
+
+        if (idsTareas.length > 0) {
+          const { data, error } = await supabase
+            .from('tarea_asignados')
+            .select(`
+              tarea_id,
+              miembro_id,
+              miembros_familia (
+                id,
+                nombre,
+                color,
+                avatar_url
+              )
+            `)
+            .in('tarea_id', idsTareas)
+
+          if (error) {
+            throw error
+          }
+
+          asignaciones = data ?? []
+        }
+
+        const tareasCompletas = (tareasData ?? []).map((tarea) => ({
+          ...tarea,
+          asignados: asignaciones
+            .filter((item) => item.tarea_id === tarea.id)
+            .map((item) => item.miembros_familia)
+            .filter(Boolean)
+        }))
+
+        setTareas(tareasCompletas)
+      } catch (error) {
+        console.error('Error al cargar tareas:', error)
+        setTareas([])
+      } finally {
+        setCargandoTareas(false)
+      }
+    }
+
+    cargarTareas()
   }, [familia?.id])
 
   const manejarFamiliaCreada = async (familiaCreada) => {
@@ -850,6 +943,402 @@ const eliminarIntegrante = async () => {
     eventos.find((evento) => new Date(evento.fecha_inicio) >= new Date()) ??
     null
 
+  const cerrarModalTarea = () => {
+    setMostrarModalTarea(false)
+    setTareaEditando(null)
+    setMostrarConfirmacionEliminarTarea(false)
+    setNombreTarea('')
+    setDescripcionTarea('')
+    setPrioridadTarea('media')
+    setFechaLimiteTarea('')
+    setAsignadosTarea([])
+    setMensajeTarea('')
+  }
+
+  const abrirNuevaTarea = () => {
+    setTareaEditando(null)
+    setNombreTarea('')
+    setDescripcionTarea('')
+    setPrioridadTarea('media')
+    setFechaLimiteTarea('')
+    setAsignadosTarea([])
+    setMensajeTarea('')
+    setMostrarModalTarea(true)
+  }
+
+  const abrirEditarTarea = (tarea) => {
+    let fechaLimite = ''
+
+    if (tarea.fecha_limite) {
+      const fecha = new Date(tarea.fecha_limite)
+      const año = fecha.getFullYear()
+      const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+      const dia = String(fecha.getDate()).padStart(2, '0')
+      fechaLimite = `${año}-${mes}-${dia}`
+    }
+
+    setTareaEditando(tarea)
+    setNombreTarea(tarea.nombre)
+    setDescripcionTarea(tarea.descripcion || '')
+    setPrioridadTarea(tarea.prioridad)
+    setFechaLimiteTarea(fechaLimite)
+    setAsignadosTarea(
+      tarea.asignados.map((miembro) => miembro.id)
+    )
+    setMensajeTarea('')
+    setMostrarModalTarea(true)
+  }
+
+  const guardarEdicionTarea = async (e) => {
+    e.preventDefault()
+    setMensajeTarea('')
+
+    if (!tareaEditando) return
+
+    const nombreLimpio = nombreTarea.trim()
+
+    if (!nombreLimpio) {
+      setMensajeTarea('Escribe un nombre para la tarea.')
+      return
+    }
+
+    if (asignadosTarea.length === 0) {
+      setMensajeTarea('Selecciona al menos un integrante.')
+      return
+    }
+
+    let fechaLimiteIso = null
+
+    if (fechaLimiteTarea) {
+      const fechaLocal = new Date(`${fechaLimiteTarea}T23:59:59`)
+
+      if (Number.isNaN(fechaLocal.getTime())) {
+        setMensajeTarea('La fecha límite no es válida.')
+        return
+      }
+
+      fechaLimiteIso = fechaLocal.toISOString()
+    }
+
+    try {
+      setGuardandoTarea(true)
+
+      const { data: tareaActualizada, error: errorTarea } =
+        await supabase
+          .from('tareas_familiares')
+          .update({
+            nombre: nombreLimpio,
+            descripcion: descripcionTarea.trim() || null,
+            prioridad: prioridadTarea,
+            fecha_limite: fechaLimiteIso
+          })
+          .eq('id', tareaEditando.id)
+          .select()
+          .single()
+
+      if (errorTarea) {
+        throw errorTarea
+      }
+
+      const { error: errorEliminarAsignados } = await supabase
+        .from('tarea_asignados')
+        .delete()
+        .eq('tarea_id', tareaEditando.id)
+
+      if (errorEliminarAsignados) {
+        throw errorEliminarAsignados
+      }
+
+      const filasAsignados = asignadosTarea.map((miembroId) => ({
+        tarea_id: tareaEditando.id,
+        miembro_id: miembroId
+      }))
+
+      const { error: errorAsignados } = await supabase
+        .from('tarea_asignados')
+        .insert(filasAsignados)
+
+      if (errorAsignados) {
+        throw errorAsignados
+      }
+
+      const miembrosAsignados = miembros.filter((miembro) =>
+        asignadosTarea.includes(miembro.id)
+      )
+
+      setTareas((actuales) =>
+        actuales.map((tarea) =>
+          tarea.id === tareaEditando.id
+            ? {
+                ...tarea,
+                ...tareaActualizada,
+                asignados: miembrosAsignados
+              }
+            : tarea
+        )
+      )
+
+      cerrarModalTarea()
+    } catch (error) {
+      console.error('Error al editar tarea:', error)
+      setMensajeTarea('No se pudieron guardar los cambios.')
+    } finally {
+      setGuardandoTarea(false)
+    }
+  }
+
+  const eliminarTareaManual = async () => {
+    if (!tareaEditando) return
+
+    try {
+      setEliminandoTarea(true)
+      setMensajeTarea('')
+
+      const { error } = await supabase
+        .from('tareas_familiares')
+        .delete()
+        .eq('id', tareaEditando.id)
+
+      if (error) {
+        throw error
+      }
+
+      setTareas((actuales) =>
+        actuales.filter(
+          (tarea) => tarea.id !== tareaEditando.id
+        )
+      )
+
+      setMostrarConfirmacionEliminarTarea(false)
+      cerrarModalTarea()
+    } catch (error) {
+      console.error('Error al eliminar tarea:', error)
+      setMostrarConfirmacionEliminarTarea(false)
+      setMensajeTarea('No se pudo eliminar la tarea.')
+    } finally {
+      setEliminandoTarea(false)
+    }
+  }
+
+  const alternarAsignadoTarea = (miembroId) => {
+    setAsignadosTarea((actuales) =>
+      actuales.includes(miembroId)
+        ? actuales.filter((id) => id !== miembroId)
+        : [...actuales, miembroId]
+    )
+  }
+
+  const seleccionarTodaLaFamiliaTarea = () => {
+    if (asignadosTarea.length === miembros.length) {
+      setAsignadosTarea([])
+      return
+    }
+
+    setAsignadosTarea(miembros.map((miembro) => miembro.id))
+  }
+
+  const crearTarea = async (e) => {
+    e.preventDefault()
+    setMensajeTarea('')
+
+    const nombreLimpio = nombreTarea.trim()
+
+    if (!nombreLimpio) {
+      setMensajeTarea('Escribe un nombre para la tarea.')
+      return
+    }
+
+    if (asignadosTarea.length === 0) {
+      setMensajeTarea('Selecciona al menos un integrante.')
+      return
+    }
+
+    let fechaLimiteIso = null
+
+    if (fechaLimiteTarea) {
+      const fechaLocal = new Date(`${fechaLimiteTarea}T23:59:59`)
+
+      if (Number.isNaN(fechaLocal.getTime())) {
+        setMensajeTarea('La fecha límite no es válida.')
+        return
+      }
+
+      fechaLimiteIso = fechaLocal.toISOString()
+    }
+
+    try {
+      setGuardandoTarea(true)
+
+      const { data: nuevaTarea, error: errorTarea } = await supabase
+        .from('tareas_familiares')
+        .insert({
+          familia_id: familia.id,
+          nombre: nombreLimpio,
+          descripcion: descripcionTarea.trim() || null,
+          prioridad: prioridadTarea,
+          fecha_limite: fechaLimiteIso,
+          estado: 'pendiente',
+          creado_por: usuario.id,
+          fecha_completada: null
+        })
+        .select()
+        .single()
+
+      if (errorTarea) {
+        throw errorTarea
+      }
+
+      const filasAsignados = asignadosTarea.map((miembroId) => ({
+        tarea_id: nuevaTarea.id,
+        miembro_id: miembroId
+      }))
+
+      const { error: errorAsignados } = await supabase
+        .from('tarea_asignados')
+        .insert(filasAsignados)
+
+      if (errorAsignados) {
+        await supabase
+          .from('tareas_familiares')
+          .delete()
+          .eq('id', nuevaTarea.id)
+
+        throw errorAsignados
+      }
+
+      const miembrosAsignados = miembros.filter((miembro) =>
+        asignadosTarea.includes(miembro.id)
+      )
+
+      setTareas((actuales) => [
+        {
+          ...nuevaTarea,
+          asignados: miembrosAsignados
+        },
+        ...actuales
+      ])
+
+      cerrarModalTarea()
+    } catch (error) {
+      console.error('Error al crear tarea:', error)
+      setMensajeTarea('No se pudo crear la tarea.')
+    } finally {
+      setGuardandoTarea(false)
+    }
+  }
+
+  const cambiarEstadoTarea = async (tarea) => {
+    if (
+      tarea.estado === 'completada' ||
+      tareasEliminandose.includes(tarea.id)
+    ) {
+      return
+    }
+
+    try {
+      const { error } = await supabase.rpc(
+        'marcar_tarea_completada',
+        {
+          tarea_uuid: tarea.id,
+          nuevo_estado: true
+        }
+      )
+
+      if (error) {
+        throw error
+      }
+
+      setTareas((actuales) =>
+        actuales.map((item) =>
+          item.id === tarea.id
+            ? {
+                ...item,
+                estado: 'completada',
+                fecha_completada: new Date().toISOString()
+              }
+            : item
+        )
+      )
+
+      setTareasEliminandose((actuales) => [
+        ...actuales,
+        tarea.id
+      ])
+
+      window.setTimeout(async () => {
+        try {
+          const { error: errorEliminar } = await supabase.rpc(
+            'eliminar_tarea_completada',
+            {
+              tarea_uuid: tarea.id
+            }
+          )
+
+          if (errorEliminar) {
+            throw errorEliminar
+          }
+
+          setTareas((actuales) =>
+            actuales.filter((item) => item.id !== tarea.id)
+          )
+        } catch (errorEliminar) {
+          console.error(
+            'Error al eliminar tarea completada:',
+            errorEliminar
+          )
+
+          setTareas((actuales) =>
+            actuales.map((item) =>
+              item.id === tarea.id
+                ? {
+                    ...item,
+                    estado: 'pendiente',
+                    fecha_completada: null
+                  }
+                : item
+            )
+          )
+        } finally {
+          setTareasEliminandose((actuales) =>
+            actuales.filter((id) => id !== tarea.id)
+          )
+        }
+      }, 3000)
+    } catch (error) {
+      console.error('Error al completar tarea:', error)
+    }
+  }
+
+  const obtenerTextoPrioridad = (prioridad) => {
+    if (prioridad === 'alta') return 'Alta'
+    if (prioridad === 'baja') return 'Baja'
+    return 'Media'
+  }
+
+  const formatearFechaTarea = (fechaIso) => {
+    if (!fechaIso) return 'Sin fecha límite'
+
+    return new Date(fechaIso).toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })
+  }
+
+  const tareasPendientes = tareas.filter(
+    (tarea) => tarea.estado === 'pendiente'
+  )
+
+  const tareasCompletadas = tareas.filter(
+    (tarea) => tarea.estado === 'completada'
+  )
+
+  const tareasHoy = tareasPendientes.filter(
+    (tarea) => tarea.fecha_limite && esHoy(tarea.fecha_limite)
+  )
+
+  const cantidadActividadesHoy = eventosHoy.length + tareasHoy.length
+
   const cerrarSesion = async () => {
     setMostrarConfirmacionSalir(false)
     await supabase.auth.signOut()
@@ -915,7 +1404,12 @@ const eliminarIntegrante = async () => {
             📅 Calendario
           </button>
 
-          <button className="menu-item">
+          <button
+            className={`menu-item ${
+              seccion === 'tareas' ? 'active' : ''
+            }`}
+            onClick={() => setSeccion('tareas')}
+          >
             ✅ Tareas
           </button>
 
@@ -968,6 +1462,8 @@ const eliminarIntegrante = async () => {
               <h2 className="section-main-title">
                 {seccion === 'calendario'
                   ? 'Calendario'
+                  : seccion === 'tareas'
+                  ? 'Tareas'
                   : 'Familia'}
               </h2>
             )}
@@ -1073,11 +1569,21 @@ const eliminarIntegrante = async () => {
 
                 <p>TAREAS</p>
 
-                <h3>0 pendientes</h3>
+                <h3>
+                  {tareasPendientes.length}{' '}
+                  {tareasPendientes.length === 1
+                    ? 'pendiente'
+                    : 'pendientes'}
+                </h3>
 
-                <span>0 completadas</span>
+                <span>
+                  {tareasCompletadas.length}{' '}
+                  {tareasCompletadas.length === 1
+                    ? 'completada'
+                    : 'completadas'}
+                </span>
 
-                <button>
+                <button onClick={() => setSeccion('tareas')}>
                   Ver tareas →
                 </button>
               </article>
@@ -1107,25 +1613,19 @@ const eliminarIntegrante = async () => {
                   </p>
 
                   <h3>
-                    {eventosHoy.length === 0
+                    {cantidadActividadesHoy === 0
                       ? 'No hay actividades para hoy'
-                      : `${eventosHoy.length} ${
-                          eventosHoy.length === 1
+                      : `${cantidadActividadesHoy} ${
+                          cantidadActividadesHoy === 1
                             ? 'actividad'
                             : 'actividades'
                         } para hoy`}
                   </h3>
                 </div>
-
-                <button
-                  onClick={() => setSeccion('calendario')}
-                >
-                  Ver todo
-                </button>
               </div>
 
               <div className="event-list">
-                {eventosHoy.length === 0 ? (
+                {cantidadActividadesHoy === 0 ? (
                   <div className="event-item">
                     <div className="event-info">
                       <strong>
@@ -1133,50 +1633,92 @@ const eliminarIntegrante = async () => {
                       </strong>
 
                       <span>
-                        Cuando agregues eventos,
+                        Los eventos de hoy y las tareas que vencen hoy
                         aparecerán aquí.
                       </span>
                     </div>
                   </div>
                 ) : (
-                  eventosHoy.map((evento) => (
-                    <div
-                      className="event-item"
-                      key={evento.id}
-                    >
-                      <div className="event-info">
-                        <strong>{evento.titulo}</strong>
+                  <>
+                    {eventosHoy.map((evento) => (
+                      <div
+                        className="event-item"
+                        key={`evento-${evento.id}`}
+                      >
+                        <div className="today-activity-type">
+                          📅
+                        </div>
 
-                        <span>
-                          {evento.todo_el_dia
-                            ? 'Todo el día'
-                            : new Date(
-                                evento.fecha_inicio
-                              ).toLocaleTimeString(
-                                'es-CL',
-                                {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }
-                              )}
-                        </span>
-                      </div>
+                        <div className="event-info">
+                          <strong>{evento.titulo}</strong>
 
-                      <div className="calendar-assignees">
-                        {evento.asignados.map((miembro) => (
-                          <span
-                            key={miembro.id}
-                            className="calendar-assignee-dot"
-                            title={miembro.nombre}
-                            style={{
-                              backgroundColor:
-                                miembro.color
-                            }}
-                          />
-                        ))}
+                          <span>
+                            {evento.todo_el_dia
+                              ? 'Todo el día'
+                              : new Date(
+                                  evento.fecha_inicio
+                                ).toLocaleTimeString(
+                                  'es-CL',
+                                  {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }
+                                )}
+                          </span>
+                        </div>
+
+                        <div className="calendar-assignees">
+                          {evento.asignados.map((miembro) => (
+                            <span
+                              key={miembro.id}
+                              className="calendar-assignee-dot"
+                              title={miembro.nombre}
+                              style={{
+                                backgroundColor:
+                                  miembro.color
+                              }}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+
+                    {tareasHoy.map((tarea) => (
+                      <div
+                        className="event-item today-task-item"
+                        key={`tarea-${tarea.id}`}
+                      >
+                        <div className="today-activity-type">
+                          ✅
+                        </div>
+
+                        <div className="event-info">
+                          <strong>{tarea.nombre}</strong>
+
+                          <span>
+                            Tarea · Prioridad{' '}
+                            {obtenerTextoPrioridad(
+                              tarea.prioridad
+                            ).toLowerCase()}
+                          </span>
+                        </div>
+
+                        <div className="calendar-assignees">
+                          {tarea.asignados.map((miembro) => (
+                            <span
+                              key={miembro.id}
+                              className="calendar-assignee-dot"
+                              title={miembro.nombre}
+                              style={{
+                                backgroundColor:
+                                  miembro.color
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
             </section>
@@ -1342,6 +1884,163 @@ const eliminarIntegrante = async () => {
                               </button>
                             )}
                           </div>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {seccion === 'tareas' && (
+          <section className="tasks-management">
+            <div className="tasks-management-header">
+              <div>
+                <p className="eyebrow">TAREAS FAMILIARES</p>
+                <p className="subtitle">
+                  Organiza pendientes y reparte responsabilidades.
+                </p>
+              </div>
+
+              <button
+                className="add-member-button"
+                onClick={abrirNuevaTarea}
+              >
+                ＋ Nueva tarea
+              </button>
+            </div>
+
+            {cargandoTareas ? (
+              <div className="calendar-empty">
+                Cargando tareas...
+              </div>
+            ) : tareas.length === 0 ? (
+              <div className="calendar-empty">
+                <div className="calendar-empty-icon">✅</div>
+
+                <h3>Aún no hay tareas</h3>
+
+                <p>
+                  Crea la primera tarea para comenzar a organizar los pendientes.
+                </p>
+
+                <button
+                  className="member-save-button"
+                  onClick={abrirNuevaTarea}
+                >
+                  Crear primera tarea
+                </button>
+              </div>
+            ) : (
+              <div className="task-list">
+                {tareas.map((tarea) => {
+                  const creador = miembros.find(
+                    (miembro) =>
+                      miembro.user_id === tarea.creado_por
+                  )
+
+                  return (
+                    <article
+                      className={`task-family-card priority-${tarea.prioridad} ${
+                        tareasEliminandose.includes(tarea.id)
+                          ? 'task-deleting'
+                          : ''
+                      }`}
+                      key={tarea.id}
+                    >
+                      <div className="task-family-main">
+                        <div className="task-family-top">
+                          <div>
+                            <span className={`task-priority-badge priority-${tarea.prioridad}`}>
+                              {obtenerTextoPrioridad(tarea.prioridad)}
+                            </span>
+
+                            <h3>{tarea.nombre}</h3>
+                          </div>
+
+                          <span className={`task-status-badge ${tarea.estado}`}>
+                            {tarea.estado === 'completada'
+                              ? '✓ Completada'
+                              : 'Pendiente'}
+                          </span>
+                        </div>
+
+                        {tarea.descripcion && (
+                          <p className="task-description">
+                            {tarea.descripcion}
+                          </p>
+                        )}
+
+                        <div className="task-family-details">
+                          <span>
+                            📅 {formatearFechaTarea(tarea.fecha_limite)}
+                          </span>
+
+                          <span>
+                            Creada por: {creador?.nombre || 'Miembro'}
+                          </span>
+                        </div>
+
+                        <div className="calendar-assignees-row">
+                          {tarea.asignados.map((miembro) => (
+                            <div
+                              className="calendar-assignee"
+                              key={miembro.id}
+                              title={miembro.nombre}
+                            >
+                              <div
+                                className="calendar-assignee-avatar"
+                                style={{
+                                  borderColor: miembro.color,
+                                  color: miembro.color
+                                }}
+                              >
+                                {miembro.avatar_url ? (
+                                  <img
+                                    src={miembro.avatar_url}
+                                    alt={miembro.nombre}
+                                  />
+                                ) : (
+                                  obtenerInicial(miembro.nombre)
+                                )}
+                              </div>
+
+                              <span>{miembro.nombre}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="task-family-actions">
+                          {tarea.creado_por === usuario.id &&
+                            tarea.estado !== 'completada' && (
+                              <button
+                                type="button"
+                                className="task-edit-button"
+                                onClick={() => abrirEditarTarea(tarea)}
+                              >
+                                ✏️ Editar
+                              </button>
+                            )}
+
+                          <button
+                            type="button"
+                            className={`task-complete-button ${
+                              tarea.estado === 'completada'
+                                ? 'completed'
+                                : ''
+                            }`}
+                            onClick={() => cambiarEstadoTarea(tarea)}
+                            disabled={
+                              tarea.estado === 'completada' ||
+                              tareasEliminandose.includes(tarea.id)
+                            }
+                          >
+                            {tarea.estado === 'completada'
+                              ? '✓ Completada · eliminando...'
+                              : '✓ Marcar como completada'}
+                          </button>
                         </div>
                       </div>
                     </article>
@@ -1725,6 +2424,258 @@ const eliminarIntegrante = async () => {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {mostrarModalTarea && (
+        <div
+          className="member-modal-overlay"
+          onClick={cerrarModalTarea}
+        >
+          <div
+            className="member-modal task-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="member-modal-header">
+              <div>
+                <p className="eyebrow">
+                  {tareaEditando ? 'EDITAR TAREA' : 'NUEVA TAREA'}
+                </p>
+                <h2>
+                  {tareaEditando
+                    ? 'Editar tarea familiar'
+                    : 'Agregar pendiente familiar'}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                className="member-modal-close"
+                onClick={cerrarModalTarea}
+              >
+                ×
+              </button>
+            </div>
+
+            <form
+              onSubmit={
+                tareaEditando
+                  ? guardarEdicionTarea
+                  : crearTarea
+              }
+            >
+              <div className="member-form-field">
+                <label>Nombre</label>
+
+                <input
+                  type="text"
+                  placeholder="Ej: Sacar la basura"
+                  value={nombreTarea}
+                  onChange={(e) => setNombreTarea(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="member-form-field">
+                <label>Descripción</label>
+
+                <textarea
+                  placeholder="Agrega detalles opcionales..."
+                  value={descripcionTarea}
+                  onChange={(e) =>
+                    setDescripcionTarea(e.target.value)
+                  }
+                  rows="3"
+                />
+              </div>
+
+              <div className="calendar-form-grid">
+                <div className="member-form-field">
+                  <label>Prioridad</label>
+
+                  <select
+                    value={prioridadTarea}
+                    onChange={(e) =>
+                      setPrioridadTarea(e.target.value)
+                    }
+                  >
+                    <option value="baja">Baja</option>
+                    <option value="media">Media</option>
+                    <option value="alta">Alta</option>
+                  </select>
+                </div>
+
+                <div className="member-form-field">
+                  <label>Fecha límite</label>
+
+                  <input
+                    type="date"
+                    value={fechaLimiteTarea}
+                    onChange={(e) =>
+                      setFechaLimiteTarea(e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="member-form-field">
+                <div className="calendar-assignment-header">
+                  <label>Asignar a</label>
+
+                  <button
+                    type="button"
+                    className="calendar-select-all"
+                    onClick={seleccionarTodaLaFamiliaTarea}
+                  >
+                    {asignadosTarea.length === miembros.length
+                      ? 'Quitar todos'
+                      : 'Toda la familia'}
+                  </button>
+                </div>
+
+                <div className="calendar-member-selector">
+                  {miembros.map((miembro) => {
+                    const seleccionado =
+                      asignadosTarea.includes(miembro.id)
+
+                    return (
+                      <button
+                        type="button"
+                        key={miembro.id}
+                        className={`calendar-member-option ${
+                          seleccionado ? 'selected' : ''
+                        }`}
+                        style={{
+                          borderColor: seleccionado
+                            ? miembro.color
+                            : undefined
+                        }}
+                        onClick={() =>
+                          alternarAsignadoTarea(miembro.id)
+                        }
+                      >
+                        <span
+                          className="calendar-member-mini-avatar"
+                          style={{
+                            borderColor: miembro.color,
+                            color: miembro.color
+                          }}
+                        >
+                          {miembro.avatar_url ? (
+                            <img
+                              src={miembro.avatar_url}
+                              alt={miembro.nombre}
+                            />
+                          ) : (
+                            obtenerInicial(miembro.nombre)
+                          )}
+                        </span>
+
+                        <span>{miembro.nombre}</span>
+
+                        <strong>
+                          {seleccionado ? '✓' : '+'}
+                        </strong>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {mensajeTarea && (
+                <div className="member-form-message">
+                  {mensajeTarea}
+                </div>
+              )}
+
+              <div className="calendar-modal-actions task-modal-actions">
+                <div>
+                  {tareaEditando && (
+                    <button
+                      type="button"
+                      className="task-delete-button"
+                      onClick={() =>
+                        setMostrarConfirmacionEliminarTarea(true)
+                      }
+                      disabled={guardandoTarea}
+                    >
+                      🗑️ Eliminar tarea
+                    </button>
+                  )}
+                </div>
+
+                <div className="calendar-modal-actions-right">
+                  <button
+                    type="button"
+                    className="member-cancel-button"
+                    onClick={cerrarModalTarea}
+                    disabled={guardandoTarea}
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="member-save-button"
+                    disabled={guardandoTarea}
+                  >
+                    {guardandoTarea
+                      ? 'Guardando...'
+                      : tareaEditando
+                      ? 'Guardar cambios'
+                      : 'Crear tarea'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {mostrarConfirmacionEliminarTarea && tareaEditando && (
+        <div
+          className="event-delete-confirm-overlay"
+          onClick={() =>
+            !eliminandoTarea &&
+            setMostrarConfirmacionEliminarTarea(false)
+          }
+        >
+          <div
+            className="event-delete-confirm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="event-delete-confirm-icon">🗑️</div>
+
+            <h3>¿Eliminar “{tareaEditando.nombre}”?</h3>
+
+            <p>
+              Esta tarea se eliminará definitivamente para toda la familia.
+            </p>
+
+            <div className="event-delete-confirm-actions">
+              <button
+                type="button"
+                className="member-cancel-button"
+                onClick={() =>
+                  setMostrarConfirmacionEliminarTarea(false)
+                }
+                disabled={eliminandoTarea}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="task-delete-confirm-button"
+                onClick={eliminarTareaManual}
+                disabled={eliminandoTarea}
+              >
+                {eliminandoTarea
+                  ? 'Eliminando...'
+                  : 'Sí, eliminar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

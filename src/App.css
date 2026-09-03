@@ -1319,3 +1319,313 @@ button {
     justify-content: flex-start;
   }
 }
+
+/* =========================
+   TAREAS FAMILIARES
+========================= */
+
+.tasks-management {
+  padding-bottom: 90px;
+}
+
+.tasks-management-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.tasks-management-header .subtitle {
+  margin: 5px 0 0;
+}
+
+.task-list {
+  display: grid;
+  gap: 14px;
+}
+
+.task-family-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(224, 226, 235, 0.92);
+  border-left: 5px solid #d1d5db;
+  border-radius: 18px;
+  padding: 18px 20px;
+  box-shadow: 0 10px 28px rgba(40, 45, 70, 0.07);
+}
+
+.task-family-card.priority-alta {
+  border-left-color: #ef4444;
+}
+
+.task-family-card.priority-media {
+  border-left-color: #f59e0b;
+}
+
+.task-family-card.priority-baja {
+  border-left-color: #22c55e;
+}
+
+.task-family-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.task-family-top h3 {
+  margin: 7px 0 0;
+  font-size: 18px;
+}
+
+.task-priority-badge,
+.task-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-priority-badge.priority-alta {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.task-priority-badge.priority-media {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.task-priority-badge.priority-baja {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.task-status-badge {
+  background: #f3f4f6;
+  color: #596174;
+}
+
+.task-status-badge.completada {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.task-description {
+  margin: 12px 0 0;
+  color: #697184;
+  line-height: 1.5;
+}
+
+.task-family-details {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+  color: #697184;
+  font-size: 13px;
+}
+
+.task-modal {
+  max-width: 620px;
+}
+
+@media (max-width: 700px) {
+  .tasks-management-header {
+    flex-direction: column;
+  }
+
+  .tasks-management-header .add-member-button {
+    width: 100%;
+  }
+
+  .task-family-top {
+    flex-direction: column;
+  }
+}
+/* =========================
+   COMPLETAR TAREAS + HOY
+========================= */
+
+.task-family-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.task-complete-button {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  background: #eefbf2;
+  color: #16803d;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+.task-complete-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 18px rgba(30, 120, 65, 0.14);
+  filter: brightness(0.98);
+}
+
+.task-complete-button.completed {
+  background: #f3f4f6;
+  color: #697184;
+}
+
+.task-family-card:has(.task-status-badge.completada) {
+  opacity: 0.78;
+}
+
+.task-family-card:has(.task-status-badge.completada) h3 {
+  text-decoration: line-through;
+}
+
+.today-activity-type {
+  flex: 0 0 auto;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.today-task-item {
+  border-left: 3px solid rgba(103, 84, 231, 0.3);
+}
+
+@media (max-width: 700px) {
+  .task-family-actions {
+    justify-content: stretch;
+  }
+
+  .task-complete-button {
+    width: 100%;
+  }
+}
+/* =========================
+   TAREA COMPLETADA: BORRADO EN 3 SEGUNDOS
+========================= */
+
+.task-family-card.task-deleting {
+  animation: taskCompletedPulse 0.35s ease;
+}
+
+.task-family-card.task-deleting h3 {
+  text-decoration: line-through;
+}
+
+.task-family-card.task-deleting .task-description,
+.task-family-card.task-deleting .task-family-details,
+.task-family-card.task-deleting .calendar-assignees-row {
+  opacity: 0.65;
+}
+
+.task-complete-button:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+@keyframes taskCompletedPulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.995);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+/* =========================
+   EDITAR Y ELIMINAR TAREAS
+========================= */
+
+.task-family-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.task-edit-button {
+  border: 1px solid rgba(103, 84, 231, 0.22);
+  background: rgba(103, 84, 231, 0.08);
+  color: #6754e7;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+
+.task-edit-button:hover {
+  transform: translateY(-1px);
+  background: rgba(103, 84, 231, 0.13);
+}
+
+.task-modal-actions {
+  margin-top: 22px;
+}
+
+.task-delete-button {
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  background: #fff1f2;
+  color: #be123c;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.task-delete-confirm-button {
+  border: 0;
+  background: #dc2626;
+  color: white;
+  border-radius: 12px;
+  padding: 10px 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.task-delete-confirm-button:disabled,
+.task-delete-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 700px) {
+  .task-family-actions {
+    align-items: stretch;
+  }
+
+  .task-edit-button,
+  .task-complete-button {
+    width: 100%;
+  }
+
+  .task-modal-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .task-modal-actions > div,
+  .task-modal-actions .calendar-modal-actions-right {
+    width: 100%;
+  }
+
+  .task-delete-button {
+    width: 100%;
+  }
+}
+
