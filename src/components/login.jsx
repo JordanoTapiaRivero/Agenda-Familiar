@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import './Login.css'
+import './login.css'
 
 function Login({ onLogin }) {
   const [modo, setModo] = useState('login')
