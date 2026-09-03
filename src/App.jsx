@@ -6,6 +6,17 @@ import AvatarUploader from './components/AvatarUploader'
 import { supabase } from './lib/supabaseClient'
 
 function App() {
+  const obtenerFechaLocalHoy = () => {
+    const hoy = new Date()
+    const anio = hoy.getFullYear()
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0')
+    const dia = String(hoy.getDate()).padStart(2, '0')
+
+    return `${anio}-${mes}-${dia}`
+  }
+
+  const fechaMinimaPermitida = obtenerFechaLocalHoy()
+
   const [usuario, setUsuario] = useState(null)
   const [cargandoSesion, setCargandoSesion] = useState(true)
 
@@ -98,6 +109,23 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [guardandoProductoCompra, setGuardandoProductoCompra] = useState(false)
   const [mensajeProductoCompra, setMensajeProductoCompra] = useState('')
   const [finalizandoListaCompra, setFinalizandoListaCompra] = useState(false)
+  const [listaCompraAEliminar, setListaCompraAEliminar] = useState(null)
+  const [eliminandoListaCompra, setEliminandoListaCompra] = useState(false)
+
+  const [gastos, setGastos] = useState([])
+  const [cargandoGastos, setCargandoGastos] = useState(false)
+  const [mostrarModalGasto, setMostrarModalGasto] = useState(false)
+  const [conceptoGasto, setConceptoGasto] = useState('')
+  const [montoGasto, setMontoGasto] = useState('')
+  const [categoriaGasto, setCategoriaGasto] = useState('supermercado')
+  const [pagadoPorGasto, setPagadoPorGasto] = useState('')
+  const [fechaGasto, setFechaGasto] = useState('')
+  const [notaGasto, setNotaGasto] = useState('')
+  const [guardandoGasto, setGuardandoGasto] = useState(false)
+  const [mensajeGasto, setMensajeGasto] = useState('')
+  const [gastoEditando, setGastoEditando] = useState(null)
+  const [gastoAEliminar, setGastoAEliminar] = useState(null)
+  const [eliminandoGasto, setEliminandoGasto] = useState(false)
 
   useEffect(() => {
     const cargarSesion = async () => {
@@ -343,6 +371,50 @@ const [mensajeEdicion, setMensajeEdicion] =
     }
 
     cargarTareas()
+  }, [familia?.id])
+
+  useEffect(() => {
+    const cargarGastos = async () => {
+      if (!familia?.id) {
+        setGastos([])
+        return
+      }
+
+      try {
+        setCargandoGastos(true)
+
+        const { data, error } = await supabase
+          .from('gastos_familiares')
+          .select(`
+            id,
+            familia_id,
+            concepto,
+            monto,
+            categoria,
+            pagado_por,
+            fecha,
+            nota,
+            creado_por,
+            created_at
+          `)
+          .eq('familia_id', familia.id)
+          .order('fecha', { ascending: false })
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          throw error
+        }
+
+        setGastos(data ?? [])
+      } catch (error) {
+        console.error('Error al cargar gastos:', error)
+        setGastos([])
+      } finally {
+        setCargandoGastos(false)
+      }
+    }
+
+    cargarGastos()
   }, [familia?.id])
 
   useEffect(() => {
@@ -1721,6 +1793,350 @@ const eliminarIntegrante = async () => {
     }
   }
 
+  const solicitarEliminarListaCompra = (lista, evento) => {
+    evento.stopPropagation()
+
+    if (lista.creado_por !== usuario?.id) return
+
+    setListaCompraAEliminar(lista)
+  }
+
+  const eliminarListaCompraCompletada = async () => {
+    if (!listaCompraAEliminar) return
+
+    try {
+      setEliminandoListaCompra(true)
+
+      const { error: errorProductos } = await supabase
+        .from('productos_compra')
+        .delete()
+        .eq('lista_id', listaCompraAEliminar.id)
+
+      if (errorProductos) {
+        throw errorProductos
+      }
+
+      const { error: errorLista } = await supabase
+        .from('listas_compras')
+        .delete()
+        .eq('id', listaCompraAEliminar.id)
+        .eq('creado_por', usuario.id)
+
+      if (errorLista) {
+        throw errorLista
+      }
+
+      setListasCompras((actuales) =>
+        actuales.filter((lista) => lista.id !== listaCompraAEliminar.id)
+      )
+
+      if (listaCompraSeleccionada?.id === listaCompraAEliminar.id) {
+        setListaCompraSeleccionada(null)
+      }
+
+      setListaCompraAEliminar(null)
+    } catch (error) {
+      console.error('Error al eliminar lista completada:', error)
+    } finally {
+      setEliminandoListaCompra(false)
+    }
+  }
+
+  const gastosMesActual = gastos.filter((gasto) => {
+    const hoy = new Date()
+    const [anio, mes] = gasto.fecha.split('-').map(Number)
+
+    return (
+      anio === hoy.getFullYear() &&
+      mes === hoy.getMonth() + 1
+    )
+  })
+
+  const totalGastosMesActual = gastosMesActual.reduce(
+    (total, gasto) => total + Number(gasto.monto || 0),
+    0
+  )
+
+  const obtenerClaveMes = (fecha) => {
+    const [anio, mes] = fecha.split('-')
+    return `${anio}-${mes}`
+  }
+
+  const obtenerNombreMes = (claveMes) => {
+    const [anio, mes] = claveMes.split('-').map(Number)
+
+    return new Date(anio, mes - 1, 1).toLocaleDateString('es-CL', {
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+
+  const hoyGastos = new Date()
+  const claveMesActual = `${hoyGastos.getFullYear()}-${String(
+    hoyGastos.getMonth() + 1
+  ).padStart(2, '0')}`
+
+  const nombreMesActual = obtenerNombreMes(claveMesActual)
+
+  const gastosMesesAnteriores = Object.entries(
+    gastos
+      .filter((gasto) => obtenerClaveMes(gasto.fecha) !== claveMesActual)
+      .reduce((grupos, gasto) => {
+        const clave = obtenerClaveMes(gasto.fecha)
+
+        if (!grupos[clave]) {
+          grupos[clave] = []
+        }
+
+        grupos[clave].push(gasto)
+        return grupos
+      }, {})
+  )
+    .sort(([mesA], [mesB]) => mesB.localeCompare(mesA))
+    .map(([clave, gastosDelMes]) => ({
+      clave,
+      nombre: obtenerNombreMes(clave),
+      total: gastosDelMes.reduce(
+        (total, gasto) => total + Number(gasto.monto || 0),
+        0
+      ),
+      gastos: gastosDelMes
+    }))
+
+  const formatearMontoCLP = (monto) =>
+    new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      maximumFractionDigits: 0
+    }).format(Number(monto || 0))
+
+  const obtenerNombreCategoriaGasto = (categoria) => {
+    const nombres = {
+      supermercado: 'Supermercado',
+      hogar: 'Hogar',
+      cuentas: 'Cuentas',
+      transporte: 'Transporte',
+      salud: 'Salud',
+      educacion: 'Educación',
+      entretencion: 'Entretención',
+      comida: 'Comida',
+      otros: 'Otros'
+    }
+
+    return nombres[categoria] || 'Otros'
+  }
+
+  const obtenerIconoCategoriaGasto = (categoria) => {
+    const iconos = {
+      supermercado: '🛒',
+      hogar: '🏠',
+      cuentas: '🧾',
+      transporte: '🚗',
+      salud: '💊',
+      educacion: '📚',
+      entretencion: '🎬',
+      comida: '🍽️',
+      otros: '💳'
+    }
+
+    return iconos[categoria] || '💳'
+  }
+
+  const abrirNuevoGasto = () => {
+    const hoy = new Date()
+    const fechaLocal = [
+      hoy.getFullYear(),
+      String(hoy.getMonth() + 1).padStart(2, '0'),
+      String(hoy.getDate()).padStart(2, '0')
+    ].join('-')
+
+    const miembroActual = miembros.find(
+      (miembro) => miembro.user_id === usuario.id
+    )
+
+    setGastoEditando(null)
+    setConceptoGasto('')
+    setMontoGasto('')
+    setCategoriaGasto('supermercado')
+    setPagadoPorGasto(miembroActual?.id || miembros[0]?.id || '')
+    setFechaGasto(fechaLocal)
+    setNotaGasto('')
+    setMensajeGasto('')
+    setMostrarModalGasto(true)
+  }
+
+  const abrirEditarGasto = (gasto) => {
+    if (gasto.creado_por !== usuario?.id) return
+
+    setGastoEditando(gasto)
+    setConceptoGasto(gasto.concepto || '')
+    setMontoGasto(String(gasto.monto ?? ''))
+    setCategoriaGasto(gasto.categoria || 'supermercado')
+    setPagadoPorGasto(gasto.pagado_por || '')
+    setFechaGasto(gasto.fecha || '')
+    setNotaGasto(gasto.nota || '')
+    setMensajeGasto('')
+    setMostrarModalGasto(true)
+  }
+
+  const cerrarModalGasto = () => {
+    if (guardandoGasto) return
+
+    setMostrarModalGasto(false)
+    setGastoEditando(null)
+    setMensajeGasto('')
+  }
+
+  const guardarGasto = async (e) => {
+    e.preventDefault()
+    setMensajeGasto('')
+
+    const conceptoLimpio = conceptoGasto.trim()
+    const montoNumero = Number(
+      String(montoGasto).replace(/\./g, '').replace(',', '.')
+    )
+
+    if (!conceptoLimpio) {
+      setMensajeGasto('Escribe el nombre del gasto.')
+      return
+    }
+
+    if (!Number.isFinite(montoNumero) || montoNumero <= 0) {
+      setMensajeGasto('Ingresa un monto válido.')
+      return
+    }
+
+    if (!pagadoPorGasto) {
+      setMensajeGasto('Selecciona quién pagó.')
+      return
+    }
+
+    if (!fechaGasto) {
+      setMensajeGasto('Selecciona una fecha.')
+      return
+    }
+
+    try {
+      setGuardandoGasto(true)
+
+      const datosGasto = {
+        concepto: conceptoLimpio,
+        monto: montoNumero,
+        categoria: categoriaGasto,
+        pagado_por: pagadoPorGasto,
+        fecha: fechaGasto,
+        nota: notaGasto.trim() || null
+      }
+
+      if (gastoEditando) {
+        const { data, error } = await supabase
+          .from('gastos_familiares')
+          .update(datosGasto)
+          .eq('id', gastoEditando.id)
+          .eq('creado_por', usuario.id)
+          .select()
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        setGastos((actuales) =>
+          actuales
+            .map((gasto) =>
+              gasto.id === gastoEditando.id ? data : gasto
+            )
+            .sort((a, b) => {
+              if (a.fecha === b.fecha) {
+                return new Date(b.created_at) - new Date(a.created_at)
+              }
+
+              return b.fecha.localeCompare(a.fecha)
+            })
+        )
+      } else {
+        const { data, error } = await supabase
+          .from('gastos_familiares')
+          .insert({
+            familia_id: familia.id,
+            ...datosGasto,
+            creado_por: usuario.id
+          })
+          .select()
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        setGastos((actuales) =>
+          [data, ...actuales].sort((a, b) => {
+            if (a.fecha === b.fecha) {
+              return new Date(b.created_at) - new Date(a.created_at)
+            }
+
+            return b.fecha.localeCompare(a.fecha)
+          })
+        )
+      }
+
+      cerrarModalGasto()
+    } catch (error) {
+      console.error(
+        gastoEditando
+          ? 'Error al editar gasto:'
+          : 'Error al registrar gasto:',
+        error
+      )
+
+      setMensajeGasto(
+        gastoEditando
+          ? 'No se pudieron guardar los cambios.'
+          : 'No se pudo registrar el gasto.'
+      )
+    } finally {
+      setGuardandoGasto(false)
+    }
+  }
+
+  const solicitarEliminarGasto = (gasto) => {
+    if (gasto.creado_por !== usuario?.id) return
+    setGastoAEliminar(gasto)
+  }
+
+  const eliminarGasto = async () => {
+    if (!gastoAEliminar) return
+
+    try {
+      setEliminandoGasto(true)
+
+      const { error } = await supabase
+        .from('gastos_familiares')
+        .delete()
+        .eq('id', gastoAEliminar.id)
+        .eq('creado_por', usuario.id)
+
+      if (error) {
+        throw error
+      }
+
+      setGastos((actuales) =>
+        actuales.filter((gasto) => gasto.id !== gastoAEliminar.id)
+      )
+
+      if (gastoEditando?.id === gastoAEliminar.id) {
+        setMostrarModalGasto(false)
+        setGastoEditando(null)
+      }
+
+      setGastoAEliminar(null)
+    } catch (error) {
+      console.error('Error al eliminar gasto:', error)
+    } finally {
+      setEliminandoGasto(false)
+    }
+  }
+
   const cerrarSesion = async () => {
     setMostrarConfirmacionSalir(false)
     await supabase.auth.signOut()
@@ -1804,7 +2220,12 @@ const eliminarIntegrante = async () => {
             🛒 Compras
           </button>
 
-          <button className="menu-item">
+          <button
+            className={`menu-item ${
+              seccion === 'gastos' ? 'active' : ''
+            }`}
+            onClick={() => setSeccion('gastos')}
+          >
             💰 Gastos
           </button>
 
@@ -1853,6 +2274,8 @@ const eliminarIntegrante = async () => {
                   ? 'Tareas'
                   : seccion === 'compras'
                   ? 'Compras'
+                  : seccion === 'gastos'
+                  ? 'Gastos'
                   : 'Familia'}
               </h2>
             )}
@@ -1994,11 +2417,16 @@ const eliminarIntegrante = async () => {
 
                 <p>GASTOS</p>
 
-                <h3>$0</h3>
+                <h3>{formatearMontoCLP(totalGastosMesActual)}</h3>
 
-                <span>Este mes</span>
+                <span>
+                  {gastosMesActual.length}{' '}
+                  {gastosMesActual.length === 1
+                    ? 'gasto este mes'
+                    : 'gastos este mes'}
+                </span>
 
-                <button>
+                <button onClick={() => setSeccion('gastos')}>
                   Ver gastos →
                 </button>
               </article>
@@ -2589,11 +3017,17 @@ const eliminarIntegrante = async () => {
                   ) : (
                     <div className="shopping-list-grid completed">
                       {listasComprasCompletadas.map((lista) => (
-                        <button
-                          type="button"
+                        <div
                           className="shopping-list-card completed"
                           key={lista.id}
+                          role="button"
+                          tabIndex={0}
                           onClick={() => abrirListaCompra(lista)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              abrirListaCompra(lista)
+                            }
+                          }}
                         >
                           <div className="shopping-list-card-icon">
                             ✓
@@ -2623,14 +3057,357 @@ const eliminarIntegrante = async () => {
                             </small>
                           </div>
 
-                          <span className="shopping-card-arrow">→</span>
-                        </button>
+                          <div className="shopping-completed-card-actions">
+                            {lista.creado_por === usuario?.id && (
+                              <button
+                                type="button"
+                                className="shopping-completed-delete-icon"
+                                title="Eliminar lista"
+                                aria-label={`Eliminar ${lista.nombre}`}
+                                onClick={(e) =>
+                                  solicitarEliminarListaCompra(lista, e)
+                                }
+                              >
+                                🗑️
+                              </button>
+                            )}
+
+                            <span className="shopping-card-arrow">→</span>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
               </>
             )}
+          </section>
+        )}
+
+        {seccion === 'gastos' && (
+          <section className="expenses-management">
+            <div className="expenses-management-header">
+              <div>
+                <p className="eyebrow">GASTOS FAMILIARES</p>
+                <p className="subtitle">
+                  Registra y revisa los gastos compartidos de la familia.
+                </p>
+              </div>
+
+              <button
+                className="add-member-button"
+                onClick={abrirNuevoGasto}
+              >
+                ＋ Nuevo gasto
+              </button>
+            </div>
+
+            <div className="expenses-summary-grid">
+              <article className="expenses-total-card">
+                <span className="expenses-summary-icon">💰</span>
+                <div>
+                  <p>TOTAL ESTE MES</p>
+                  <h3>{formatearMontoCLP(totalGastosMesActual)}</h3>
+                  <span>
+                    {gastosMesActual.length}{' '}
+                    {gastosMesActual.length === 1
+                      ? 'movimiento'
+                      : 'movimientos'}
+                  </span>
+                </div>
+              </article>
+
+              <article className="expenses-total-card secondary">
+                <span className="expenses-summary-icon">🧾</span>
+                <div>
+                  <p>REGISTRADOS</p>
+                  <h3>{gastos.length}</h3>
+                  <span>Gastos en el historial</span>
+                </div>
+              </article>
+            </div>
+
+            <div className="expenses-section-heading">
+              <div>
+                <h3>
+                  Gastos de{' '}
+                  {nombreMesActual.charAt(0).toUpperCase() +
+                    nombreMesActual.slice(1)}
+                </h3>
+                <span>
+                  {gastosMesActual.length}{' '}
+                  {gastosMesActual.length === 1 ? 'gasto' : 'gastos'}
+                </span>
+              </div>
+            </div>
+
+            {cargandoGastos ? (
+              <div className="calendar-empty">
+                Cargando gastos...
+              </div>
+            ) : gastosMesActual.length === 0 ? (
+              <div className="calendar-empty expenses-empty">
+                <div className="calendar-empty-icon">💰</div>
+                <h3>Aún no hay gastos registrados</h3>
+                <p>
+                  Registra el primer gasto del mes para comenzar a llevar el control.
+                </p>
+
+                <button
+                  className="member-save-button"
+                  onClick={abrirNuevoGasto}
+                >
+                  Registrar primer gasto
+                </button>
+              </div>
+            ) : (
+              <div className="expenses-list">
+                {gastosMesActual.map((gasto) => {
+                  const pagador = miembros.find(
+                    (miembro) => miembro.id === gasto.pagado_por
+                  )
+
+                  const [anio, mes, dia] = gasto.fecha
+                    .split('-')
+                    .map(Number)
+
+                  const fechaTexto = new Date(
+                    anio,
+                    mes - 1,
+                    dia
+                  ).toLocaleDateString('es-CL', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  })
+
+                  return (
+                    <article className="expense-row" key={gasto.id}>
+                      <div className="expense-category-icon">
+                        {obtenerIconoCategoriaGasto(gasto.categoria)}
+                      </div>
+
+                      <div className="expense-main-info">
+                        <div className="expense-title-row">
+                          <h3>{gasto.concepto}</h3>
+                          <strong>{formatearMontoCLP(gasto.monto)}</strong>
+                        </div>
+
+                        <div className="expense-meta">
+                          <span>
+                            {obtenerNombreCategoriaGasto(
+                              gasto.categoria
+                            )}
+                          </span>
+
+                          <span>•</span>
+
+                          <span>{fechaTexto}</span>
+                        </div>
+
+                        <div className="expense-paid-by">
+                          <span>Pagó</span>
+
+                          {pagador && (
+                            <span
+                              className="expense-payer-dot"
+                              style={{
+                                backgroundColor: pagador.color
+                              }}
+                            />
+                          )}
+
+                          <strong>
+                            {pagador?.nombre || 'Miembro'}
+                          </strong>
+                        </div>
+
+                        {gasto.nota && (
+                          <p className="expense-note">{gasto.nota}</p>
+                        )}
+                      </div>
+
+                      {gasto.creado_por === usuario?.id && (
+                        <div className="expense-row-actions">
+                          <button
+                            type="button"
+                            className="expense-action-icon"
+                            onClick={() => abrirEditarGasto(gasto)}
+                            title="Editar gasto"
+                            aria-label={`Editar ${gasto.concepto}`}
+                          >
+                            ✏️
+                          </button>
+
+                          <button
+                            type="button"
+                            className="expense-action-icon delete"
+                            onClick={() => solicitarEliminarGasto(gasto)}
+                            title="Eliminar gasto"
+                            aria-label={`Eliminar ${gasto.concepto}`}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      )}
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="expenses-monthly-history">
+              <div className="expenses-section-heading">
+                <div>
+                  <h3>Historial mensual</h3>
+                  <span>
+                    {gastosMesesAnteriores.length}{' '}
+                    {gastosMesesAnteriores.length === 1
+                      ? 'mes anterior'
+                      : 'meses anteriores'}
+                  </span>
+                </div>
+              </div>
+
+              {gastosMesesAnteriores.length === 0 ? (
+                <div className="expenses-history-empty">
+                  <span>📁</span>
+                  <div>
+                    <strong>Aún no hay meses cerrados</strong>
+                    <p>
+                      Cuando cambie el mes, los gastos anteriores
+                      aparecerán automáticamente aquí.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="expenses-month-groups">
+                  {gastosMesesAnteriores.map((grupo) => (
+                    <details
+                      className="expenses-month-group"
+                      key={grupo.clave}
+                    >
+                      <summary>
+                        <div>
+                          <strong>
+                            {grupo.nombre.charAt(0).toUpperCase() +
+                              grupo.nombre.slice(1)}
+                          </strong>
+
+                          <span>
+                            {grupo.gastos.length}{' '}
+                            {grupo.gastos.length === 1
+                              ? 'gasto'
+                              : 'gastos'}
+                          </span>
+                        </div>
+
+                        <strong>
+                          {formatearMontoCLP(grupo.total)}
+                        </strong>
+                      </summary>
+
+                      <div className="expenses-month-list">
+                        {grupo.gastos.map((gasto) => {
+                          const pagador = miembros.find(
+                            (miembro) =>
+                              miembro.id === gasto.pagado_por
+                          )
+
+                          const [anio, mes, dia] = gasto.fecha
+                            .split('-')
+                            .map(Number)
+
+                          const fechaTexto = new Date(
+                            anio,
+                            mes - 1,
+                            dia
+                          ).toLocaleDateString('es-CL', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })
+
+                          return (
+                            <article
+                              className="expense-row history"
+                              key={gasto.id}
+                            >
+                              <div className="expense-category-icon">
+                                {obtenerIconoCategoriaGasto(
+                                  gasto.categoria
+                                )}
+                              </div>
+
+                              <div className="expense-main-info">
+                                <div className="expense-title-row">
+                                  <h3>{gasto.concepto}</h3>
+                                  <strong>
+                                    {formatearMontoCLP(gasto.monto)}
+                                  </strong>
+                                </div>
+
+                                <div className="expense-meta">
+                                  <span>
+                                    {obtenerNombreCategoriaGasto(
+                                      gasto.categoria
+                                    )}
+                                  </span>
+                                  <span>•</span>
+                                  <span>{fechaTexto}</span>
+                                </div>
+
+                                <div className="expense-paid-by">
+                                  <span>Pagó</span>
+
+                                  {pagador && (
+                                    <span
+                                      className="expense-payer-dot"
+                                      style={{
+                                        backgroundColor:
+                                          pagador.color
+                                      }}
+                                    />
+                                  )}
+
+                                  <strong>
+                                    {pagador?.nombre || 'Miembro'}
+                                  </strong>
+                                </div>
+                              </div>
+
+                              {gasto.creado_por === usuario?.id && (
+                                <div className="expense-row-actions">
+                                  <button
+                                    type="button"
+                                    className="expense-action-icon"
+                                    onClick={() => abrirEditarGasto(gasto)}
+                                    title="Editar gasto"
+                                    aria-label={`Editar ${gasto.concepto}`}
+                                  >
+                                    ✏️
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="expense-action-icon delete"
+                                    onClick={() => solicitarEliminarGasto(gasto)}
+                                    title="Eliminar gasto"
+                                    aria-label={`Eliminar ${gasto.concepto}`}
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              )}
+                            </article>
+                          )
+                        })}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         )}
 
@@ -2810,6 +3587,7 @@ const eliminarIntegrante = async () => {
 
                   <input
                     type="date"
+                    min={fechaMinimaPermitida}
                     value={fechaEvento}
                     onChange={(e) =>
                       setFechaEvento(e.target.value)
@@ -3005,6 +3783,197 @@ const eliminarIntegrante = async () => {
                       : 'Crear evento'}
                   </button>
                 </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {gastoAEliminar && (
+        <div
+          className="member-modal-overlay event-delete-confirm-overlay"
+          onClick={() =>
+            !eliminandoGasto && setGastoAEliminar(null)
+          }
+        >
+          <div
+            className="member-modal delete-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="delete-confirm-icon">🗑️</div>
+
+            <h2>¿Eliminar “{gastoAEliminar.concepto}”?</h2>
+
+            <p className="delete-confirm-text">
+              Este gasto se eliminará definitivamente del registro familiar.
+              Esta acción no se puede deshacer.
+            </p>
+
+            <div className="delete-confirm-actions">
+              <button
+                type="button"
+                className="member-cancel-button"
+                onClick={() => setGastoAEliminar(null)}
+                disabled={eliminandoGasto}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="member-delete-confirm-button"
+                onClick={eliminarGasto}
+                disabled={eliminandoGasto}
+              >
+                {eliminandoGasto
+                  ? 'Eliminando...'
+                  : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mostrarModalGasto && (
+        <div
+          className="member-modal-overlay"
+          onClick={cerrarModalGasto}
+        >
+          <div
+            className="member-modal expense-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="member-modal-header">
+              <div>
+                <p className="eyebrow">
+                  {gastoEditando ? 'EDITAR GASTO' : 'NUEVO GASTO'}
+                </p>
+                <h2>
+                  {gastoEditando ? 'Editar gasto' : 'Registrar gasto'}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                className="member-modal-close"
+                onClick={cerrarModalGasto}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={guardarGasto}>
+              <div className="member-form-field">
+                <label>Concepto</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Supermercado Líder"
+                  value={conceptoGasto}
+                  onChange={(e) => setConceptoGasto(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="expense-form-grid">
+                <div className="member-form-field">
+                  <label>Monto</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Ej: 48990"
+                    value={montoGasto}
+                    onChange={(e) => setMontoGasto(e.target.value)}
+                  />
+                </div>
+
+                <div className="member-form-field">
+                  <label>Fecha</label>
+                  <input
+                    type="date"
+                    value={fechaGasto}
+                    onChange={(e) => setFechaGasto(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="expense-form-grid">
+                <div className="member-form-field">
+                  <label>Categoría</label>
+                  <select
+                    value={categoriaGasto}
+                    onChange={(e) =>
+                      setCategoriaGasto(e.target.value)
+                    }
+                  >
+                    <option value="supermercado">Supermercado</option>
+                    <option value="hogar">Hogar</option>
+                    <option value="cuentas">Cuentas</option>
+                    <option value="transporte">Transporte</option>
+                    <option value="salud">Salud</option>
+                    <option value="educacion">Educación</option>
+                    <option value="entretencion">Entretención</option>
+                    <option value="comida">Comida</option>
+                    <option value="otros">Otros</option>
+                  </select>
+                </div>
+
+                <div className="member-form-field">
+                  <label>¿Quién pagó?</label>
+                  <select
+                    value={pagadoPorGasto}
+                    onChange={(e) =>
+                      setPagadoPorGasto(e.target.value)
+                    }
+                  >
+                    <option value="">Seleccionar</option>
+
+                    {miembros.map((miembro) => (
+                      <option key={miembro.id} value={miembro.id}>
+                        {miembro.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="member-form-field">
+                <label>Nota opcional</label>
+                <textarea
+                  placeholder="Ej: Compra semanal"
+                  value={notaGasto}
+                  onChange={(e) => setNotaGasto(e.target.value)}
+                  rows="3"
+                />
+              </div>
+
+              {mensajeGasto && (
+                <div className="member-form-message">
+                  {mensajeGasto}
+                </div>
+              )}
+
+              <div className="member-modal-actions">
+                <button
+                  type="button"
+                  className="member-cancel-button"
+                  onClick={cerrarModalGasto}
+                  disabled={guardandoGasto}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  className="member-save-button"
+                  disabled={guardandoGasto}
+                >
+                  {guardandoGasto
+                    ? 'Guardando...'
+                    : gastoEditando
+                      ? 'Guardar cambios'
+                      : 'Registrar gasto'}
+                </button>
               </div>
             </form>
           </div>
@@ -3337,6 +4306,7 @@ const eliminarIntegrante = async () => {
 
                   <input
                     type="date"
+                    min={fechaMinimaPermitida}
                     value={fechaLimiteTarea}
                     onChange={(e) =>
                       setFechaLimiteTarea(e.target.value)
@@ -3455,6 +4425,51 @@ const eliminarIntegrante = async () => {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {listaCompraAEliminar && (
+        <div
+          className="member-modal-overlay event-delete-confirm-overlay"
+          onClick={() =>
+            !eliminandoListaCompra && setListaCompraAEliminar(null)
+          }
+        >
+          <div
+            className="member-modal delete-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="delete-confirm-icon">🗑️</div>
+
+            <h2>¿Eliminar “{listaCompraAEliminar.nombre}”?</h2>
+
+            <p className="delete-confirm-text">
+              La lista completada y sus productos se eliminarán definitivamente.
+              Esta acción no se puede deshacer.
+            </p>
+
+            <div className="delete-confirm-actions">
+              <button
+                type="button"
+                className="member-cancel-button"
+                onClick={() => setListaCompraAEliminar(null)}
+                disabled={eliminandoListaCompra}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="member-delete-confirm-button"
+                onClick={eliminarListaCompraCompletada}
+                disabled={eliminandoListaCompra}
+              >
+                {eliminandoListaCompra
+                  ? 'Eliminando...'
+                  : 'Sí, eliminar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

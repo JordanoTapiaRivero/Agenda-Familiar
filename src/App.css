@@ -2079,6 +2079,798 @@ button {
     width: 100%;
   }
 }
+/* =========================
+   GASTOS
+========================= */
 
+.expenses-management {
+  padding-bottom: 90px;
+}
+
+.expenses-management-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.expenses-management-header .subtitle {
+  margin: 5px 0 0;
+}
+
+.expenses-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 30px;
+}
+
+.expenses-total-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  border: 1px solid rgba(224, 226, 235, 0.92);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 28px rgba(40, 45, 70, 0.06);
+}
+
+.expenses-total-card.secondary {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.expenses-summary-icon {
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: #eef8ef;
+  font-size: 23px;
+}
+
+.expenses-total-card p {
+  margin: 0 0 3px;
+  color: #8a91a2;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.expenses-total-card h3 {
+  margin: 0;
+  color: #292d3a;
+  font-size: 24px;
+}
+
+.expenses-total-card div > span {
+  color: #8a91a2;
+  font-size: 12px;
+}
+
+.expenses-section-heading {
+  margin-bottom: 13px;
+}
+
+.expenses-section-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.expenses-section-heading h3 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.expenses-section-heading span {
+  color: #8a91a2;
+  font-size: 13px;
+}
+
+.expenses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expense-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid #e6e8ef;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 7px 22px rgba(40, 45, 70, 0.045);
+}
+
+.expense-category-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #f4f2ff;
+  font-size: 20px;
+}
+
+.expense-main-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.expense-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.expense-title-row h3 {
+  margin: 0;
+  color: #303442;
+  font-size: 15px;
+}
+
+.expense-title-row strong {
+  flex: 0 0 auto;
+  color: #303442;
+  font-size: 16px;
+}
+
+.expense-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+  color: #8a91a2;
+  font-size: 12px;
+}
+
+.expense-paid-by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: #777e8e;
+  font-size: 12px;
+}
+
+.expense-paid-by strong {
+  color: #555b69;
+}
+
+.expense-payer-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.expense-note {
+  margin: 8px 0 0;
+  color: #858b99;
+  font-size: 12px;
+}
+
+.expense-modal {
+  max-width: 620px;
+}
+
+.expense-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.expense-modal textarea {
+  resize: vertical;
+  min-height: 78px;
+}
+
+@media (max-width: 700px) {
+  .expenses-management-header {
+    flex-direction: column;
+  }
+
+  .expenses-management-header .add-member-button {
+    width: 100%;
+  }
+
+  .expenses-summary-grid,
+  .expense-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .expense-title-row {
+    align-items: flex-start;
+  }
+}
+
+/* =========================================================
+   MODALES Y FORMULARIOS UNIFICADOS
+   Calendario · Tareas · Compras · Gastos
+========================================================= */
+
+/* Contenedor general de todos los modales */
+.member-modal {
+  border: 1px solid rgba(225, 228, 237, 0.92);
+  border-radius: 24px;
+  padding: 26px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 70px rgba(35, 40, 65, 0.18);
+}
+
+/* Los modales grandes pueden desplazarse sin salirse de la pantalla */
+.calendar-event-modal,
+.task-modal,
+.shopping-list-modal,
+.shopping-detail-modal,
+.expense-modal {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #d8d4f8 transparent;
+}
+
+/* Encabezado */
+.member-modal-header {
+  margin-bottom: 22px;
+}
+
+.member-modal-header .eyebrow {
+  margin-bottom: 6px;
+  color: #6754e7;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.member-modal-header h2 {
+  margin: 0;
+  color: #252a3a;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+/* Botón cerrar */
+.member-modal-close {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: #f3f4f8;
+  color: #858b9a;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.member-modal-close:hover {
+  background: #eceaff;
+  color: #6754e7;
+  transform: rotate(4deg);
+}
+
+/* Etiquetas */
+.member-modal .member-form-field {
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+.member-modal .member-form-field label {
+  color: #4f5668;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Inputs, fechas, horas, números, selects y textareas */
+.member-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.member-modal .member-form-field select,
+.member-modal .member-form-field textarea,
+.calendar-event-modal select,
+.calendar-event-modal textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #dfe2ea;
+  border-radius: 13px;
+  background: #ffffff;
+  color: #303442;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.member-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.member-modal .member-form-field select,
+.calendar-event-modal select {
+  min-height: 46px;
+  padding: 0 13px;
+}
+
+.member-modal .member-form-field textarea,
+.calendar-event-modal textarea {
+  min-height: 92px;
+  padding: 12px 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.member-modal .member-form-field input::placeholder,
+.member-modal .member-form-field textarea::placeholder {
+  color: #a1a6b3;
+}
+
+/* Estado focus consistente */
+.member-modal .member-form-field input:not([type='checkbox']):not([type='color']):focus,
+.member-modal .member-form-field select:focus,
+.member-modal .member-form-field textarea:focus,
+.calendar-event-modal select:focus,
+.calendar-event-modal textarea:focus {
+  border-color: #7664ea;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(103, 84, 231, 0.1);
+}
+
+/* Selector nativo más limpio */
+.member-modal select {
+  cursor: pointer;
+}
+
+/* Campos en columnas */
+.calendar-form-grid,
+.expense-form-grid {
+  gap: 14px;
+}
+
+/* Checkbox "Todo el día" */
+.calendar-checkbox-row {
+  min-height: 42px;
+  padding: 0 2px;
+  margin: 0 0 16px;
+}
+
+.calendar-checkbox-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: #6754e7;
+  cursor: pointer;
+}
+
+/* Selector de integrantes de calendario/tareas */
+.calendar-member-option {
+  min-height: 48px;
+  padding: 9px 11px;
+  border-color: #e1e4ec;
+  border-radius: 13px;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.calendar-member-option:hover {
+  border-color: #cfc8f7;
+  background: #faf9ff;
+}
+
+.calendar-member-option.selected {
+  border-color: #6754e7;
+  background: #f7f5ff;
+  box-shadow: 0 0 0 3px rgba(103, 84, 231, 0.08);
+}
+
+/* Selector de color de integrante: se mantiene especial */
+.member-color-selector {
+  min-height: 46px;
+}
+
+.member-color-selector input[type='color'] {
+  border-radius: 12px;
+}
+
+/* Mensajes de validación */
+.member-form-message {
+  margin: 3px 0 16px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: #fff2f2;
+  border: 1px solid #f7d8d8;
+  color: #b44343;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Pie y botones */
+.member-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #eceef3;
+}
+
+.member-cancel-button,
+.member-save-button,
+.member-delete-button,
+.logout-confirm-button,
+.member-delete-confirm-button,
+.task-delete-confirm-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 13px;
+  font-family: inherit;
+  font-weight: 800;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.member-cancel-button {
+  border: 1px solid #dfe2ea;
+  background: #ffffff;
+  color: #62697a;
+}
+
+.member-cancel-button:hover {
+  border-color: #cfd3de;
+  background: #f7f7fa;
+  transform: translateY(-1px);
+}
+
+.member-save-button {
+  border: 0;
+  background: #6754e7;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(103, 84, 231, 0.22);
+}
+
+.member-save-button:hover:not(:disabled) {
+  background: #5e4cdd;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(103, 84, 231, 0.28);
+}
+
+.member-delete-button:hover:not(:disabled),
+.member-delete-confirm-button:hover:not(:disabled),
+.task-delete-confirm-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.member-cancel-button:disabled,
+.member-save-button:disabled,
+.member-delete-button:disabled,
+.member-delete-confirm-button:disabled,
+.task-delete-confirm-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Modal específico: Gastos */
+.expense-modal {
+  max-width: 640px;
+}
+
+/* Modal específico: Calendario */
+.calendar-event-modal {
+  max-width: 600px;
+}
+
+/* Modal específico: Tareas */
+.task-modal {
+  max-width: 640px;
+}
+
+/* Modal específico: Crear lista */
+.shopping-list-modal {
+  max-width: 540px;
+}
+
+/* Detalle de lista de compras */
+.shopping-detail-modal {
+  border-radius: 24px;
+}
+
+.shopping-add-product-form {
+  padding: 16px;
+  border-radius: 17px;
+}
+
+.shopping-add-product-fields .member-form-field {
+  margin-bottom: 0;
+}
+
+.shopping-add-product-button {
+  min-height: 46px;
+  border-radius: 13px;
+}
+
+/* Barra de scroll discreta en Chrome/Edge */
+.calendar-event-modal::-webkit-scrollbar,
+.task-modal::-webkit-scrollbar,
+.shopping-list-modal::-webkit-scrollbar,
+.shopping-detail-modal::-webkit-scrollbar,
+.expense-modal::-webkit-scrollbar {
+  width: 7px;
+}
+
+.calendar-event-modal::-webkit-scrollbar-thumb,
+.task-modal::-webkit-scrollbar-thumb,
+.shopping-list-modal::-webkit-scrollbar-thumb,
+.shopping-detail-modal::-webkit-scrollbar-thumb,
+.expense-modal::-webkit-scrollbar-thumb {
+  background: #d8d4f8;
+  border-radius: 999px;
+}
+
+/* Responsive de todos los formularios */
+@media (max-width: 700px) {
+  .member-modal-overlay {
+    padding: 12px;
+  }
+
+  .member-modal {
+    width: 100%;
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .member-modal-header h2 {
+    font-size: 22px;
+  }
+
+  .calendar-form-grid,
+  .expense-form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .member-modal-actions,
+  .calendar-modal-actions,
+  .task-modal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .member-modal-actions button,
+  .calendar-modal-actions button,
+  .task-modal-actions button {
+    width: 100%;
+  }
+
+  .calendar-modal-actions-right {
+    width: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .shopping-add-product-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+   GASTOS - HISTORIAL MENSUAL
+========================= */
+
+.expenses-monthly-history {
+  margin-top: 34px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(222, 225, 234, 0.9);
+}
+
+.expenses-history-empty {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 18px;
+  border: 1px dashed #d9dce5;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.expenses-history-empty > span {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #f4f2ff;
+  font-size: 19px;
+}
+
+.expenses-history-empty strong {
+  color: #424757;
+}
+
+.expenses-history-empty p {
+  margin: 3px 0 0;
+  color: #8a91a2;
+  font-size: 13px;
+}
+
+.expenses-month-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.expenses-month-group {
+  overflow: hidden;
+  border: 1px solid #e3e6ed;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 7px 22px rgba(40, 45, 70, 0.045);
+}
+
+.expenses-month-group > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.expenses-month-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.expenses-month-group > summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.expenses-month-group > summary > div > strong {
+  color: #303442;
+  font-size: 15px;
+}
+
+.expenses-month-group > summary span {
+  color: #8a91a2;
+  font-size: 12px;
+}
+
+.expenses-month-group > summary > strong {
+  color: #303442;
+  font-size: 17px;
+}
+
+.expenses-month-group[open] > summary {
+  background: rgba(103, 84, 231, 0.045);
+  border-bottom: 1px solid #eceef3;
+}
+
+.expenses-month-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+}
+
+.expense-row.history {
+  box-shadow: none;
+  background: rgba(250, 250, 252, 0.86);
+}
+
+@media (max-width: 600px) {
+  .expenses-month-group > summary {
+    align-items: flex-start;
+  }
+}
+/* Icono eliminar en listas de compras completadas */
+.shopping-completed-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.shopping-completed-delete-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  opacity: 0.62;
+  transition: background 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.shopping-completed-delete-icon:hover {
+  background: rgba(239, 68, 68, 0.1);
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+.shopping-completed-delete-icon:focus-visible {
+  outline: 2px solid rgba(103, 84, 231, 0.45);
+  outline-offset: 2px;
+}
+/* Acciones discretas para editar/eliminar gastos */
+.expense-row {
+  position: relative;
+}
+
+.expense-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 10px;
+}
+
+.expense-action-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  opacity: 0.62;
+  transition: background 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.expense-action-icon:hover {
+  background: rgba(103, 84, 231, 0.1);
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+.expense-action-icon.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.expense-action-icon:focus-visible {
+  outline: 2px solid rgba(103, 84, 231, 0.45);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .expense-row-actions {
+    gap: 2px;
+    padding-left: 4px;
+  }
+
+  .expense-action-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
 
 
