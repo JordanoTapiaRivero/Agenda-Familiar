@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import Login from './components/Login'
+import Login from './components/login'
 import FamilySetup from './components/FamilySetup'
 import AvatarUploader from './components/AvatarUploader'
 import { supabase } from './lib/supabaseClient'
