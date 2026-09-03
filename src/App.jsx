@@ -86,6 +86,19 @@ const [mensajeEdicion, setMensajeEdicion] =
     useState(false)
   const [eliminandoTarea, setEliminandoTarea] = useState(false)
 
+  const [listasCompras, setListasCompras] = useState([])
+  const [cargandoCompras, setCargandoCompras] = useState(false)
+  const [mostrarModalListaCompra, setMostrarModalListaCompra] = useState(false)
+  const [nombreListaCompra, setNombreListaCompra] = useState('')
+  const [guardandoListaCompra, setGuardandoListaCompra] = useState(false)
+  const [mensajeListaCompra, setMensajeListaCompra] = useState('')
+  const [listaCompraSeleccionada, setListaCompraSeleccionada] = useState(null)
+  const [nombreProductoCompra, setNombreProductoCompra] = useState('')
+  const [cantidadProductoCompra, setCantidadProductoCompra] = useState('')
+  const [guardandoProductoCompra, setGuardandoProductoCompra] = useState(false)
+  const [mensajeProductoCompra, setMensajeProductoCompra] = useState('')
+  const [finalizandoListaCompra, setFinalizandoListaCompra] = useState(false)
+
   useEffect(() => {
     const cargarSesion = async () => {
       const { data } = await supabase.auth.getSession()
@@ -330,6 +343,80 @@ const [mensajeEdicion, setMensajeEdicion] =
     }
 
     cargarTareas()
+  }, [familia?.id])
+
+  useEffect(() => {
+    const cargarCompras = async () => {
+      if (!familia?.id) {
+        setListasCompras([])
+        return
+      }
+
+      try {
+        setCargandoCompras(true)
+
+        const { data: listasData, error: errorListas } = await supabase
+          .from('listas_compras')
+          .select(`
+            id,
+            familia_id,
+            nombre,
+            estado,
+            creado_por,
+            completada_at,
+            created_at
+          `)
+          .eq('familia_id', familia.id)
+          .order('created_at', { ascending: false })
+
+        if (errorListas) {
+          throw errorListas
+        }
+
+        const idsListas = (listasData ?? []).map((lista) => lista.id)
+        let productos = []
+
+        if (idsListas.length > 0) {
+          const { data, error } = await supabase
+            .from('productos_compra')
+            .select(`
+              id,
+              lista_id,
+              nombre,
+              cantidad,
+              comprado,
+              comprado_por,
+              comprado_at,
+              agregado_por,
+              created_at
+            `)
+            .in('lista_id', idsListas)
+            .order('created_at', { ascending: true })
+
+          if (error) {
+            throw error
+          }
+
+          productos = data ?? []
+        }
+
+        setListasCompras(
+          (listasData ?? []).map((lista) => ({
+            ...lista,
+            productos: productos.filter(
+              (producto) => producto.lista_id === lista.id
+            )
+          }))
+        )
+      } catch (error) {
+        console.error('Error al cargar compras:', error)
+        setListasCompras([])
+      } finally {
+        setCargandoCompras(false)
+      }
+    }
+
+    cargarCompras()
   }, [familia?.id])
 
   const manejarFamiliaCreada = async (familiaCreada) => {
@@ -1339,6 +1426,301 @@ const eliminarIntegrante = async () => {
 
   const cantidadActividadesHoy = eventosHoy.length + tareasHoy.length
 
+  const listasComprasActivas = listasCompras.filter(
+    (lista) => lista.estado === 'activa'
+  )
+
+  const listasComprasCompletadas = listasCompras.filter(
+    (lista) => lista.estado === 'completada'
+  )
+
+  const productosPendientesCompra = listasComprasActivas.reduce(
+    (total, lista) =>
+      total +
+      lista.productos.filter((producto) => !producto.comprado).length,
+    0
+  )
+
+  const abrirNuevaListaCompra = () => {
+    setNombreListaCompra('')
+    setMensajeListaCompra('')
+    setMostrarModalListaCompra(true)
+  }
+
+  const cerrarModalListaCompra = () => {
+    setMostrarModalListaCompra(false)
+    setNombreListaCompra('')
+    setMensajeListaCompra('')
+  }
+
+  const crearListaCompra = async (e) => {
+    e.preventDefault()
+    setMensajeListaCompra('')
+
+    const nombreLimpio = nombreListaCompra.trim()
+
+    if (!nombreLimpio) {
+      setMensajeListaCompra('Escribe un nombre para la lista.')
+      return
+    }
+
+    try {
+      setGuardandoListaCompra(true)
+
+      const { data, error } = await supabase
+        .from('listas_compras')
+        .insert({
+          familia_id: familia.id,
+          nombre: nombreLimpio,
+          estado: 'activa',
+          creado_por: usuario.id,
+          completada_at: null
+        })
+        .select()
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      setListasCompras((actuales) => [
+        {
+          ...data,
+          productos: []
+        },
+        ...actuales
+      ])
+
+      cerrarModalListaCompra()
+    } catch (error) {
+      console.error('Error al crear lista de compras:', error)
+      setMensajeListaCompra('No se pudo crear la lista.')
+    } finally {
+      setGuardandoListaCompra(false)
+    }
+  }
+
+  const abrirListaCompra = (lista) => {
+    setListaCompraSeleccionada(lista)
+    setNombreProductoCompra('')
+    setCantidadProductoCompra('')
+    setMensajeProductoCompra('')
+  }
+
+  const cerrarListaCompra = () => {
+    setListaCompraSeleccionada(null)
+    setNombreProductoCompra('')
+    setCantidadProductoCompra('')
+    setMensajeProductoCompra('')
+  }
+
+  const agregarProductoCompra = async (e) => {
+    e.preventDefault()
+    setMensajeProductoCompra('')
+
+    if (!listaCompraSeleccionada) return
+
+    const nombreLimpio = nombreProductoCompra.trim()
+    const cantidadLimpia = cantidadProductoCompra.trim()
+
+    if (!nombreLimpio) {
+      setMensajeProductoCompra('Escribe el nombre del producto.')
+      return
+    }
+
+    try {
+      setGuardandoProductoCompra(true)
+
+      const { data, error } = await supabase
+        .from('productos_compra')
+        .insert({
+          lista_id: listaCompraSeleccionada.id,
+          nombre: nombreLimpio,
+          cantidad: cantidadLimpia || null,
+          comprado: false,
+          comprado_por: null,
+          comprado_at: null,
+          agregado_por: usuario.id
+        })
+        .select()
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      setListasCompras((actuales) =>
+        actuales.map((lista) =>
+          lista.id === listaCompraSeleccionada.id
+            ? {
+                ...lista,
+                productos: [...lista.productos, data]
+              }
+            : lista
+        )
+      )
+
+      setListaCompraSeleccionada((actual) =>
+        actual
+          ? {
+              ...actual,
+              productos: [...actual.productos, data]
+            }
+          : actual
+      )
+
+      setNombreProductoCompra('')
+      setCantidadProductoCompra('')
+    } catch (error) {
+      console.error('Error al agregar producto:', error)
+      setMensajeProductoCompra('No se pudo agregar el producto.')
+    } finally {
+      setGuardandoProductoCompra(false)
+    }
+  }
+
+  const alternarProductoComprado = async (producto) => {
+    if (!listaCompraSeleccionada || listaCompraSeleccionada.estado !== 'activa') {
+      return
+    }
+
+    const nuevoEstado = !producto.comprado
+
+    try {
+      const { data, error } = await supabase
+        .from('productos_compra')
+        .update({
+          comprado: nuevoEstado,
+          comprado_por: nuevoEstado ? usuario.id : null,
+          comprado_at: nuevoEstado ? new Date().toISOString() : null
+        })
+        .eq('id', producto.id)
+        .select()
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      setListasCompras((actuales) =>
+        actuales.map((lista) =>
+          lista.id === listaCompraSeleccionada.id
+            ? {
+                ...lista,
+                productos: lista.productos.map((item) =>
+                  item.id === producto.id ? data : item
+                )
+              }
+            : lista
+        )
+      )
+
+      setListaCompraSeleccionada((actual) =>
+        actual
+          ? {
+              ...actual,
+              productos: actual.productos.map((item) =>
+                item.id === producto.id ? data : item
+              )
+            }
+          : actual
+      )
+    } catch (error) {
+      console.error('Error al marcar producto:', error)
+    }
+  }
+
+  const eliminarProductoCompra = async (productoId) => {
+    if (!listaCompraSeleccionada || listaCompraSeleccionada.estado !== 'activa') {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('productos_compra')
+        .delete()
+        .eq('id', productoId)
+
+      if (error) {
+        throw error
+      }
+
+      setListasCompras((actuales) =>
+        actuales.map((lista) =>
+          lista.id === listaCompraSeleccionada.id
+            ? {
+                ...lista,
+                productos: lista.productos.filter(
+                  (producto) => producto.id !== productoId
+                )
+              }
+            : lista
+        )
+      )
+
+      setListaCompraSeleccionada((actual) =>
+        actual
+          ? {
+              ...actual,
+              productos: actual.productos.filter(
+                (producto) => producto.id !== productoId
+              )
+            }
+          : actual
+      )
+    } catch (error) {
+      console.error('Error al eliminar producto:', error)
+    }
+  }
+
+  const finalizarListaCompra = async () => {
+    if (!listaCompraSeleccionada) return
+
+    try {
+      setFinalizandoListaCompra(true)
+
+      const { error } = await supabase.rpc(
+        'finalizar_lista_compra',
+        {
+          lista_uuid: listaCompraSeleccionada.id
+        }
+      )
+
+      if (error) {
+        throw error
+      }
+
+      const fechaCompletada = new Date().toISOString()
+
+      setListasCompras((actuales) =>
+        actuales.map((lista) =>
+          lista.id === listaCompraSeleccionada.id
+            ? {
+                ...lista,
+                estado: 'completada',
+                completada_at: fechaCompletada
+              }
+            : lista
+        )
+      )
+
+      setListaCompraSeleccionada((actual) =>
+        actual
+          ? {
+              ...actual,
+              estado: 'completada',
+              completada_at: fechaCompletada
+            }
+          : actual
+      )
+    } catch (error) {
+      console.error('Error al finalizar lista:', error)
+      setMensajeProductoCompra('No se pudo finalizar la lista.')
+    } finally {
+      setFinalizandoListaCompra(false)
+    }
+  }
+
   const cerrarSesion = async () => {
     setMostrarConfirmacionSalir(false)
     await supabase.auth.signOut()
@@ -1413,7 +1795,12 @@ const eliminarIntegrante = async () => {
             ✅ Tareas
           </button>
 
-          <button className="menu-item">
+          <button
+            className={`menu-item ${
+              seccion === 'compras' ? 'active' : ''
+            }`}
+            onClick={() => setSeccion('compras')}
+          >
             🛒 Compras
           </button>
 
@@ -1464,6 +1851,8 @@ const eliminarIntegrante = async () => {
                   ? 'Calendario'
                   : seccion === 'tareas'
                   ? 'Tareas'
+                  : seccion === 'compras'
+                  ? 'Compras'
                   : 'Familia'}
               </h2>
             )}
@@ -1553,12 +1942,22 @@ const eliminarIntegrante = async () => {
 
                 <p>COMPRAS</p>
 
-                <h3>0 pendientes</h3>
+                <h3>
+                  {listasComprasActivas.length}{' '}
+                  {listasComprasActivas.length === 1
+                    ? 'lista activa'
+                    : 'listas activas'}
+                </h3>
 
-                <span>Lista familiar</span>
+                <span>
+                  {productosPendientesCompra}{' '}
+                  {productosPendientesCompra === 1
+                    ? 'producto pendiente'
+                    : 'productos pendientes'}
+                </span>
 
-                <button>
-                  Ver lista →
+                <button onClick={() => setSeccion('compras')}>
+                  Ver listas →
                 </button>
               </article>
 
@@ -2051,6 +2450,190 @@ const eliminarIntegrante = async () => {
           </section>
         )}
 
+        {seccion === 'compras' && (
+          <section className="shopping-management">
+            <div className="shopping-management-header">
+              <div>
+                <p className="eyebrow">COMPRAS FAMILIARES</p>
+                <p className="subtitle">
+                  Crea listas y organiza las compras de la familia.
+                </p>
+              </div>
+
+              <button
+                className="add-member-button"
+                onClick={abrirNuevaListaCompra}
+              >
+                ＋ Nueva lista
+              </button>
+            </div>
+
+            {cargandoCompras ? (
+              <div className="calendar-empty">
+                Cargando listas...
+              </div>
+            ) : (
+              <>
+                <div className="shopping-section-heading">
+                  <div>
+                    <h3>Listas activas</h3>
+                    <span>
+                      {listasComprasActivas.length}{' '}
+                      {listasComprasActivas.length === 1
+                        ? 'lista'
+                        : 'listas'}
+                    </span>
+                  </div>
+                </div>
+
+                {listasComprasActivas.length === 0 ? (
+                  <div className="calendar-empty shopping-empty">
+                    <div className="calendar-empty-icon">🛒</div>
+                    <h3>Aún no hay listas de compras</h3>
+                    <p>
+                      Crea una lista para comenzar a agregar productos.
+                    </p>
+
+                    <button
+                      className="member-save-button"
+                      onClick={abrirNuevaListaCompra}
+                    >
+                      Crear primera lista
+                    </button>
+                  </div>
+                ) : (
+                  <div className="shopping-list-grid">
+                    {listasComprasActivas.map((lista) => {
+                      const comprados = lista.productos.filter(
+                        (producto) => producto.comprado
+                      ).length
+
+                      const total = lista.productos.length
+
+                      const creador = miembros.find(
+                        (miembro) =>
+                          miembro.user_id === lista.creado_por
+                      )
+
+                      return (
+                        <button
+                          type="button"
+                          className="shopping-list-card"
+                          key={lista.id}
+                          onClick={() => abrirListaCompra(lista)}
+                        >
+                          <div className="shopping-list-card-icon">
+                            🛒
+                          </div>
+
+                          <div className="shopping-list-card-content">
+                            <div className="shopping-list-card-top">
+                              <h3>{lista.nombre}</h3>
+                              <span className="shopping-active-badge">
+                                Activa
+                              </span>
+                            </div>
+
+                            <p>
+                              {total === 0
+                                ? 'Sin productos todavía'
+                                : `${comprados} de ${total} comprados`}
+                            </p>
+
+                            <div className="shopping-progress">
+                              <span
+                                style={{
+                                  width:
+                                    total === 0
+                                      ? '0%'
+                                      : `${(comprados / total) * 100}%`
+                                }}
+                              />
+                            </div>
+
+                            <small>
+                              Creada por: {creador?.nombre || 'Miembro'}
+                            </small>
+                          </div>
+
+                          <span className="shopping-card-arrow">→</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <div className="shopping-completed-block">
+                  <div className="shopping-section-heading">
+                    <div>
+                      <h3>Listas completadas</h3>
+                      <span>
+                        {listasComprasCompletadas.length}{' '}
+                        {listasComprasCompletadas.length === 1
+                          ? 'lista'
+                          : 'listas'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {listasComprasCompletadas.length === 0 ? (
+                    <div className="shopping-completed-empty">
+                      <span>✓</span>
+                      <div>
+                        <strong>No hay listas completadas</strong>
+                        <p>
+                          Cuando finalices una compra, aparecerá aquí.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="shopping-list-grid completed">
+                      {listasComprasCompletadas.map((lista) => (
+                        <button
+                          type="button"
+                          className="shopping-list-card completed"
+                          key={lista.id}
+                          onClick={() => abrirListaCompra(lista)}
+                        >
+                          <div className="shopping-list-card-icon">
+                            ✓
+                          </div>
+
+                          <div className="shopping-list-card-content">
+                            <div className="shopping-list-card-top">
+                              <h3>{lista.nombre}</h3>
+                              <span className="shopping-completed-badge">
+                                Completada
+                              </span>
+                            </div>
+
+                            <p>
+                              {lista.productos.length}{' '}
+                              {lista.productos.length === 1
+                                ? 'producto'
+                                : 'productos'}
+                            </p>
+
+                            <small>
+                              {lista.completada_at
+                                ? `Finalizada ${new Date(
+                                    lista.completada_at
+                                  ).toLocaleDateString('es-CL')}`
+                                : 'Lista finalizada'}
+                            </small>
+                          </div>
+
+                          <span className="shopping-card-arrow">→</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
         {seccion === 'familia' && (
           <section className="family-management">
             <div className="family-management-header">
@@ -2422,6 +3005,249 @@ const eliminarIntegrante = async () => {
                       : 'Crear evento'}
                   </button>
                 </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {listaCompraSeleccionada && (
+        <div
+          className="member-modal-overlay shopping-detail-overlay"
+          onClick={cerrarListaCompra}
+        >
+          <div
+            className="member-modal shopping-detail-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="member-modal-header shopping-detail-header">
+              <div>
+                <p className="eyebrow">
+                  {listaCompraSeleccionada.estado === 'completada'
+                    ? 'LISTA COMPLETADA'
+                    : 'LISTA DE COMPRAS'}
+                </p>
+
+                <h2>{listaCompraSeleccionada.nombre}</h2>
+
+                <span className="shopping-detail-counter">
+                  {
+                    listaCompraSeleccionada.productos.filter(
+                      (producto) => producto.comprado
+                    ).length
+                  }{' '}
+                  de {listaCompraSeleccionada.productos.length} comprados
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="member-modal-close"
+                onClick={cerrarListaCompra}
+              >
+                ×
+              </button>
+            </div>
+
+            {listaCompraSeleccionada.estado === 'activa' && (
+              <form
+                className="shopping-add-product-form"
+                onSubmit={agregarProductoCompra}
+              >
+                <div className="shopping-add-product-fields">
+                  <div className="member-form-field">
+                    <label>Producto</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Leche"
+                      value={nombreProductoCompra}
+                      onChange={(e) =>
+                        setNombreProductoCompra(e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="member-form-field shopping-quantity-field">
+                    <label>Cantidad</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: 2"
+                      value={cantidadProductoCompra}
+                      onChange={(e) =>
+                        setCantidadProductoCompra(e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="member-save-button shopping-add-product-button"
+                    disabled={guardandoProductoCompra}
+                  >
+                    {guardandoProductoCompra ? 'Agregando...' : '＋ Agregar'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {mensajeProductoCompra && (
+              <div className="member-form-message">
+                {mensajeProductoCompra}
+              </div>
+            )}
+
+            <div className="shopping-products-list">
+              {listaCompraSeleccionada.productos.length === 0 ? (
+                <div className="shopping-products-empty">
+                  <span>🧺</span>
+                  <strong>La lista está vacía</strong>
+                  <p>Agrega el primer producto para comenzar.</p>
+                </div>
+              ) : (
+                listaCompraSeleccionada.productos.map((producto) => (
+                  <div
+                    className={`shopping-product-item ${
+                      producto.comprado ? 'purchased' : ''
+                    }`}
+                    key={producto.id}
+                  >
+                    <button
+                      type="button"
+                      className={`shopping-product-check ${
+                        producto.comprado ? 'checked' : ''
+                      }`}
+                      onClick={() => alternarProductoComprado(producto)}
+                      disabled={
+                        listaCompraSeleccionada.estado === 'completada'
+                      }
+                      aria-label={
+                        producto.comprado
+                          ? 'Marcar como pendiente'
+                          : 'Marcar como comprado'
+                      }
+                    >
+                      {producto.comprado ? '✓' : ''}
+                    </button>
+
+                    <div className="shopping-product-info">
+                      <strong>{producto.nombre}</strong>
+                      {producto.cantidad && (
+                        <span>Cantidad: {producto.cantidad}</span>
+                      )}
+                    </div>
+
+                    {listaCompraSeleccionada.estado === 'activa' && (
+                      <button
+                        type="button"
+                        className="shopping-product-delete"
+                        onClick={() =>
+                          eliminarProductoCompra(producto.id)
+                        }
+                        title="Eliminar producto"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {listaCompraSeleccionada.estado === 'activa' ? (
+              <div className="shopping-detail-footer">
+                <span>
+                  {
+                    listaCompraSeleccionada.productos.filter(
+                      (producto) => !producto.comprado
+                    ).length
+                  }{' '}
+                  pendientes
+                </span>
+
+                <button
+                  type="button"
+                  className="shopping-finish-button"
+                  onClick={finalizarListaCompra}
+                  disabled={finalizandoListaCompra}
+                >
+                  {finalizandoListaCompra
+                    ? 'Finalizando...'
+                    : '✓ Finalizar lista'}
+                </button>
+              </div>
+            ) : (
+              <div className="shopping-completed-readonly">
+                ✓ Esta lista está completada y se conserva como historial.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {mostrarModalListaCompra && (
+        <div
+          className="member-modal-overlay"
+          onClick={cerrarModalListaCompra}
+        >
+          <div
+            className="member-modal shopping-list-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="member-modal-header">
+              <div>
+                <p className="eyebrow">NUEVA LISTA</p>
+                <h2>Crear lista de compras</h2>
+              </div>
+
+              <button
+                type="button"
+                className="member-modal-close"
+                onClick={cerrarModalListaCompra}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={crearListaCompra}>
+              <div className="member-form-field">
+                <label>Nombre de la lista</label>
+
+                <input
+                  type="text"
+                  placeholder="Ej: Supermercado"
+                  value={nombreListaCompra}
+                  onChange={(e) =>
+                    setNombreListaCompra(e.target.value)
+                  }
+                  autoFocus
+                />
+              </div>
+
+              {mensajeListaCompra && (
+                <div className="member-form-message">
+                  {mensajeListaCompra}
+                </div>
+              )}
+
+              <div className="member-modal-actions">
+                <button
+                  type="button"
+                  className="member-cancel-button"
+                  onClick={cerrarModalListaCompra}
+                  disabled={guardandoListaCompra}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  className="member-save-button"
+                  disabled={guardandoListaCompra}
+                >
+                  {guardandoListaCompra
+                    ? 'Creando...'
+                    : 'Crear lista'}
+                </button>
               </div>
             </form>
           </div>
