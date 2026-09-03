@@ -1,0 +1,159 @@
+.family-setup-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, #eeeaff 0, transparent 35%),
+    radial-gradient(circle at bottom right, #e9f8ef 0, transparent 35%),
+    #f6f7fb;
+}
+
+.family-setup-card {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border: 1px solid #e7e9f0;
+  border-radius: 24px;
+  padding: 36px;
+  box-shadow: 0 20px 60px rgba(40, 44, 70, 0.08);
+}
+
+.setup-logo {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #6754e7;
+  font-size: 25px;
+  margin-bottom: 12px;
+}
+
+.setup-brand {
+  margin: 0 0 28px;
+  color: #6754e7;
+  font-weight: 800;
+}
+
+.family-setup-card h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.setup-description {
+  color: #7d8597;
+  line-height: 1.5;
+  margin: 10px 0 28px;
+}
+
+.setup-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setup-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  border: 1px solid #e4e7ee;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 18px;
+  cursor: pointer;
+}
+
+.setup-option:hover {
+  border-color: #6754e7;
+  background: #faf9ff;
+}
+
+.option-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #f1efff;
+  font-size: 20px;
+}
+
+.setup-option div {
+  flex: 1;
+}
+
+.setup-option strong {
+  font-size: 15px;
+}
+
+.setup-option p {
+  margin: 5px 0 0;
+  color: #8991a2;
+  font-size: 13px;
+}
+
+.back-button {
+  border: 0;
+  background: transparent;
+  color: #6754e7;
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: 26px;
+  cursor: pointer;
+}
+
+.setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setup-field label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.setup-field input {
+  border: 1px solid #dfe3eb;
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-size: 15px;
+  outline: none;
+}
+
+.setup-field input:focus {
+  border-color: #6754e7;
+  box-shadow: 0 0 0 3px rgba(103, 84, 231, 0.08);
+}
+
+.setup-primary {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 20px;
+  background: #6754e7;
+  color: white;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.setup-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.setup-message {
+  margin-top: 16px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #f3f1ff;
+  color: #5d4dd2;
+  font-size: 13px;
+}
