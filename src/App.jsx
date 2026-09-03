@@ -62,6 +62,9 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [guardandoEvento, setGuardandoEvento] = useState(false)
   const [mensajeEvento, setMensajeEvento] = useState('')
 
+  const [mostrarConfirmacionSalir, setMostrarConfirmacionSalir] =
+    useState(false)
+
   useEffect(() => {
     const cargarSesion = async () => {
       const { data } = await supabase.auth.getSession()
@@ -627,6 +630,11 @@ const eliminarIntegrante = async () => {
     eventos.find((evento) => new Date(evento.fecha_inicio) >= new Date()) ??
     null
 
+  const cerrarSesion = async () => {
+    setMostrarConfirmacionSalir(false)
+    await supabase.auth.signOut()
+  }
+
   if (cargandoSesion) {
     return (
       <div className="loading-screen">
@@ -708,43 +716,46 @@ const eliminarIntegrante = async () => {
             👨‍👩‍👧‍👦 Familia
           </button>
         </nav>
+
+        <div className="sidebar-bottom">
+          <button
+            className="sidebar-logout-button"
+            onClick={() => setMostrarConfirmacionSalir(true)}
+          >
+            <span>↪</span>
+            Cerrar sesión
+          </button>
+        </div>
       </aside>
 
       <main className="main-content">
-        <header className="topbar">
+        <header className="topbar compact-topbar">
           <div>
-            <p className="eyebrow">
-              {familia.nombre}
-            </p>
+            {seccion === 'inicio' ? (
+              <>
+                <p className="eyebrow">
+                  {familia.nombre}
+                </p>
 
-            <h2>
-              Buenos días,{' '}
-              {usuario.user_metadata?.nombre ||
-                'Usuario'}{' '}
-              👋
-            </h2>
-
-            <p className="subtitle">
-              {seccion === 'inicio'
-                ? 'Esto es lo que tiene la familia para hoy'
-                : seccion === 'calendario'
-                ? 'Organiza los eventos y actividades de la familia'
-                : 'Administra los integrantes de tu familia'}
-            </p>
+                <h2>
+                  Buenos días,{' '}
+                  {usuario.user_metadata?.nombre ||
+                    'Usuario'}{' '}
+                  👋
+                </h2>
+              </>
+            ) : (
+              <h2 className="section-main-title">
+                {seccion === 'calendario'
+                  ? 'Calendario'
+                  : 'Familia'}
+              </h2>
+            )}
           </div>
 
           <div className="topbar-actions">
             <button className="notification-button">
               🔔
-            </button>
-
-            <button
-              className="logout-button"
-              onClick={() =>
-                supabase.auth.signOut()
-              }
-            >
-              Salir
             </button>
           </div>
         </header>
@@ -962,19 +973,7 @@ const eliminarIntegrante = async () => {
 
         {seccion === 'calendario' && (
           <section className="calendar-management">
-            <div className="calendar-management-header">
-              <div>
-                <p className="eyebrow">
-                  CALENDARIO
-                </p>
-
-                <h2>Calendario familiar</h2>
-
-                <p className="subtitle">
-                  Eventos compartidos de {familia.nombre}
-                </p>
-              </div>
-
+            <div className="calendar-management-header calendar-actions-only">
               <button
                 className="add-member-button"
                 onClick={() =>
@@ -1773,6 +1772,44 @@ const eliminarIntegrante = async () => {
     </div>
   </div>
 )}
+
+      {mostrarConfirmacionSalir && (
+        <div
+          className="member-modal-overlay logout-confirm-overlay"
+          onClick={() => setMostrarConfirmacionSalir(false)}
+        >
+          <div
+            className="member-modal logout-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="logout-confirm-icon">↪</div>
+
+            <h2>¿Cerrar sesión?</h2>
+
+            <p className="logout-confirm-text">
+              Tendrás que iniciar sesión nuevamente para entrar a Agenda Familiar.
+            </p>
+
+            <div className="delete-confirm-actions">
+              <button
+                type="button"
+                className="member-cancel-button"
+                onClick={() => setMostrarConfirmacionSalir(false)}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="logout-confirm-button"
+                onClick={cerrarSesion}
+              >
+                Sí, cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

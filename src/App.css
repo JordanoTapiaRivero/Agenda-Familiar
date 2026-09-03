@@ -1121,3 +1121,116 @@ button {
     white-space: normal;
   }
 }
+/* =========================
+   AJUSTES UI - HEADER / SALIR
+========================= */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.sidebar-logout-button {
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #697184;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-logout-button:hover {
+  background: #fff1f1;
+  color: #c63b3b;
+}
+
+.sidebar-logout-button span {
+  font-size: 18px;
+}
+
+.compact-topbar {
+  margin-bottom: 18px;
+}
+
+.compact-topbar h2 {
+  margin-bottom: 0;
+}
+
+.section-main-title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.calendar-actions-only {
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+
+.logout-confirm-overlay {
+  z-index: 1200;
+}
+
+.logout-confirm-modal {
+  max-width: 420px;
+  text-align: center;
+}
+
+.logout-confirm-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #f1efff;
+  color: #6754e7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.logout-confirm-modal h2 {
+  margin: 0 0 10px;
+}
+
+.logout-confirm-text {
+  margin: 0;
+  color: #697184;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.logout-confirm-button {
+  height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 11px;
+  background: #6754e7;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-confirm-button:hover {
+  background: #5846d6;
+}
+
+@media (max-width: 700px) {
+  .section-main-title {
+    font-size: 24px;
+  }
+}
