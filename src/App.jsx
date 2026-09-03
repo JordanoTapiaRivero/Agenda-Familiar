@@ -47,7 +47,20 @@ const [mensajeEdicion, setMensajeEdicion] =
   useState(false)
 
   const [mostrarConfirmacionEliminar, setMostrarConfirmacionEliminar] =
-  useState(false)
+    useState(false)
+
+  const [eventos, setEventos] = useState([])
+  const [cargandoEventos, setCargandoEventos] = useState(false)
+  const [mostrarModalEvento, setMostrarModalEvento] = useState(false)
+  const [tituloEvento, setTituloEvento] = useState('')
+  const [descripcionEvento, setDescripcionEvento] = useState('')
+  const [fechaEvento, setFechaEvento] = useState('')
+  const [horaEvento, setHoraEvento] = useState('')
+  const [todoElDiaEvento, setTodoElDiaEvento] = useState(false)
+  const [recordatorioEvento, setRecordatorioEvento] = useState('')
+  const [asignadosEvento, setAsignadosEvento] = useState([])
+  const [guardandoEvento, setGuardandoEvento] = useState(false)
+  const [mensajeEvento, setMensajeEvento] = useState('')
 
   useEffect(() => {
     const cargarSesion = async () => {
@@ -140,6 +153,83 @@ const [mensajeEdicion, setMensajeEdicion] =
 
     cargarFamilia()
   }, [usuario])
+
+  useEffect(() => {
+    const cargarEventos = async () => {
+      if (!familia?.id) {
+        setEventos([])
+        return
+      }
+
+      try {
+        setCargandoEventos(true)
+
+        const { data: eventosData, error: errorEventos } = await supabase
+          .from('eventos')
+          .select(`
+            id,
+            familia_id,
+            titulo,
+            descripcion,
+            fecha_inicio,
+            fecha_fin,
+            todo_el_dia,
+            creado_por,
+            recordatorio_minutos,
+            created_at
+          `)
+          .eq('familia_id', familia.id)
+          .order('fecha_inicio', { ascending: true })
+
+        if (errorEventos) {
+          throw errorEventos
+        }
+
+        const idsEventos = (eventosData ?? []).map((evento) => evento.id)
+
+        let asignaciones = []
+
+        if (idsEventos.length > 0) {
+          const { data, error } = await supabase
+            .from('evento_asignados')
+            .select(`
+              evento_id,
+              miembro_id,
+              miembros_familia (
+                id,
+                nombre,
+                color,
+                avatar_url
+              )
+            `)
+            .in('evento_id', idsEventos)
+
+          if (error) {
+            throw error
+          }
+
+          asignaciones = data ?? []
+        }
+
+        const eventosCompletos = (eventosData ?? []).map((evento) => ({
+          ...evento,
+          asignados: asignaciones
+            .filter((item) => item.evento_id === evento.id)
+            .map((item) => item.miembros_familia)
+            .filter(Boolean)
+        }))
+
+        setEventos(eventosCompletos)
+      } catch (error) {
+        console.error('Error al cargar eventos:', error)
+        setEventos([])
+      } finally {
+        setCargandoEventos(false)
+      }
+    }
+
+    cargarEventos()
+  }, [familia?.id])
 
   const manejarFamiliaCreada = async (familiaCreada) => {
     setFamilia(familiaCreada)
@@ -366,6 +456,177 @@ const eliminarIntegrante = async () => {
     setEliminandoIntegrante(false)
   }
 }
+  const cerrarModalEvento = () => {
+    setMostrarModalEvento(false)
+    setTituloEvento('')
+    setDescripcionEvento('')
+    setFechaEvento('')
+    setHoraEvento('')
+    setTodoElDiaEvento(false)
+    setRecordatorioEvento('')
+    setAsignadosEvento([])
+    setMensajeEvento('')
+  }
+
+  const alternarAsignadoEvento = (miembroId) => {
+    setAsignadosEvento((actuales) =>
+      actuales.includes(miembroId)
+        ? actuales.filter((id) => id !== miembroId)
+        : [...actuales, miembroId]
+    )
+  }
+
+  const seleccionarTodaLaFamilia = () => {
+    if (asignadosEvento.length === miembros.length) {
+      setAsignadosEvento([])
+      return
+    }
+
+    setAsignadosEvento(miembros.map((miembro) => miembro.id))
+  }
+
+  const crearEvento = async (e) => {
+    e.preventDefault()
+    setMensajeEvento('')
+
+    const tituloLimpio = tituloEvento.trim()
+
+    if (!tituloLimpio) {
+      setMensajeEvento('Escribe un título para el evento.')
+      return
+    }
+
+    if (!fechaEvento) {
+      setMensajeEvento('Selecciona una fecha para el evento.')
+      return
+    }
+
+    if (!todoElDiaEvento && !horaEvento) {
+      setMensajeEvento('Selecciona una hora para el evento.')
+      return
+    }
+
+    if (asignadosEvento.length === 0) {
+      setMensajeEvento('Selecciona al menos un integrante.')
+      return
+    }
+
+    const horaInicio = todoElDiaEvento ? '00:00' : horaEvento
+    const fechaInicioLocal = new Date(
+      `${fechaEvento}T${horaInicio}:00`
+    )
+
+    if (Number.isNaN(fechaInicioLocal.getTime())) {
+      setMensajeEvento('La fecha u hora no es válida.')
+      return
+    }
+
+    try {
+      setGuardandoEvento(true)
+
+      const { data: nuevoEvento, error: errorEvento } = await supabase
+        .from('eventos')
+        .insert({
+          familia_id: familia.id,
+          titulo: tituloLimpio,
+          descripcion: descripcionEvento.trim() || null,
+          fecha_inicio: fechaInicioLocal.toISOString(),
+          fecha_fin: null,
+          todo_el_dia: todoElDiaEvento,
+          creado_por: usuario.id,
+          recordatorio_minutos:
+            recordatorioEvento === ''
+              ? null
+              : Number(recordatorioEvento)
+        })
+        .select()
+        .single()
+
+      if (errorEvento) {
+        throw errorEvento
+      }
+
+      const filasAsignados = asignadosEvento.map((miembroId) => ({
+        evento_id: nuevoEvento.id,
+        miembro_id: miembroId
+      }))
+
+      const { error: errorAsignados } = await supabase
+        .from('evento_asignados')
+        .insert(filasAsignados)
+
+      if (errorAsignados) {
+        await supabase
+          .from('eventos')
+          .delete()
+          .eq('id', nuevoEvento.id)
+
+        throw errorAsignados
+      }
+
+      const miembrosAsignados = miembros.filter((miembro) =>
+        asignadosEvento.includes(miembro.id)
+      )
+
+      setEventos((actuales) =>
+        [
+          ...actuales,
+          {
+            ...nuevoEvento,
+            asignados: miembrosAsignados
+          }
+        ].sort(
+          (a, b) =>
+            new Date(a.fecha_inicio) - new Date(b.fecha_inicio)
+        )
+      )
+
+      cerrarModalEvento()
+    } catch (error) {
+      console.error('Error al crear evento:', error)
+      setMensajeEvento('No se pudo crear el evento.')
+    } finally {
+      setGuardandoEvento(false)
+    }
+  }
+
+  const formatearFechaEvento = (fechaIso, todoElDia = false) => {
+    const fecha = new Date(fechaIso)
+
+    if (todoElDia) {
+      return fecha.toLocaleDateString('es-CL', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    }
+
+    return fecha.toLocaleString('es-CL', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const esHoy = (fechaIso) => {
+    const fecha = new Date(fechaIso)
+    const hoy = new Date()
+
+    return (
+      fecha.getFullYear() === hoy.getFullYear() &&
+      fecha.getMonth() === hoy.getMonth() &&
+      fecha.getDate() === hoy.getDate()
+    )
+  }
+
+  const eventosHoy = eventos.filter((evento) => esHoy(evento.fecha_inicio))
+
+  const proximoEvento =
+    eventos.find((evento) => new Date(evento.fecha_inicio) >= new Date()) ??
+    null
+
   if (cargandoSesion) {
     return (
       <div className="loading-screen">
@@ -417,7 +678,12 @@ const eliminarIntegrante = async () => {
             🏠 Inicio
           </button>
 
-          <button className="menu-item">
+          <button
+            className={`menu-item ${
+              seccion === 'calendario' ? 'active' : ''
+            }`}
+            onClick={() => setSeccion('calendario')}
+          >
             📅 Calendario
           </button>
 
@@ -461,6 +727,8 @@ const eliminarIntegrante = async () => {
             <p className="subtitle">
               {seccion === 'inicio'
                 ? 'Esto es lo que tiene la familia para hoy'
+                : seccion === 'calendario'
+                ? 'Organiza los eventos y actividades de la familia'
                 : 'Administra los integrantes de tu familia'}
             </p>
           </div>
@@ -529,13 +797,24 @@ const eliminarIntegrante = async () => {
 
                 <p>PRÓXIMO EVENTO</p>
 
-                <h3>Sin eventos</h3>
+                <h3>
+                  {proximoEvento
+                    ? proximoEvento.titulo
+                    : 'Sin eventos'}
+                </h3>
 
                 <span>
-                  No hay eventos próximos
+                  {proximoEvento
+                    ? formatearFechaEvento(
+                        proximoEvento.fecha_inicio,
+                        proximoEvento.todo_el_dia
+                      )
+                    : 'No hay eventos próximos'}
                 </span>
 
-                <button>
+                <button
+                  onClick={() => setSeccion('calendario')}
+                >
                   Ver calendario →
                 </button>
               </article>
@@ -597,35 +876,253 @@ const eliminarIntegrante = async () => {
                   </p>
 
                   <h3>
-                    No hay actividades para hoy
+                    {eventosHoy.length === 0
+                      ? 'No hay actividades para hoy'
+                      : `${eventosHoy.length} ${
+                          eventosHoy.length === 1
+                            ? 'actividad'
+                            : 'actividades'
+                        } para hoy`}
                   </h3>
                 </div>
 
-                <button>
+                <button
+                  onClick={() => setSeccion('calendario')}
+                >
                   Ver todo
                 </button>
               </div>
 
               <div className="event-list">
-                <div className="event-item">
-                  <div className="event-info">
-                    <strong>
-                      Tu agenda está libre por ahora
-                    </strong>
+                {eventosHoy.length === 0 ? (
+                  <div className="event-item">
+                    <div className="event-info">
+                      <strong>
+                        Tu agenda está libre por ahora
+                      </strong>
 
-                    <span>
-                      Cuando agreguemos eventos,
-                      aparecerán aquí.
-                    </span>
+                      <span>
+                        Cuando agregues eventos,
+                        aparecerán aquí.
+                      </span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  eventosHoy.map((evento) => (
+                    <div
+                      className="event-item"
+                      key={evento.id}
+                    >
+                      <div className="event-info">
+                        <strong>{evento.titulo}</strong>
+
+                        <span>
+                          {evento.todo_el_dia
+                            ? 'Todo el día'
+                            : new Date(
+                                evento.fecha_inicio
+                              ).toLocaleTimeString(
+                                'es-CL',
+                                {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }
+                              )}
+                        </span>
+                      </div>
+
+                      <div className="calendar-assignees">
+                        {evento.asignados.map((miembro) => (
+                          <span
+                            key={miembro.id}
+                            className="calendar-assignee-dot"
+                            title={miembro.nombre}
+                            style={{
+                              backgroundColor:
+                                miembro.color
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
 
-            <button className="floating-button">
+            <button
+              className="floating-button"
+              onClick={() => setMostrarModalEvento(true)}
+              title="Nuevo evento"
+            >
               ＋
             </button>
           </>
+        )}
+
+        {seccion === 'calendario' && (
+          <section className="calendar-management">
+            <div className="calendar-management-header">
+              <div>
+                <p className="eyebrow">
+                  CALENDARIO
+                </p>
+
+                <h2>Calendario familiar</h2>
+
+                <p className="subtitle">
+                  Eventos compartidos de {familia.nombre}
+                </p>
+              </div>
+
+              <button
+                className="add-member-button"
+                onClick={() =>
+                  setMostrarModalEvento(true)
+                }
+              >
+                ＋ Nuevo evento
+              </button>
+            </div>
+
+            {cargandoEventos ? (
+              <div className="calendar-empty">
+                Cargando eventos...
+              </div>
+            ) : eventos.length === 0 ? (
+              <div className="calendar-empty">
+                <div className="calendar-empty-icon">
+                  📅
+                </div>
+
+                <h3>Aún no hay eventos</h3>
+
+                <p>
+                  Crea el primer evento para comenzar a
+                  organizar a la familia.
+                </p>
+
+                <button
+                  className="member-save-button"
+                  onClick={() =>
+                    setMostrarModalEvento(true)
+                  }
+                >
+                  Crear primer evento
+                </button>
+              </div>
+            ) : (
+              <div className="calendar-event-list">
+                {eventos.map((evento) => {
+                  const creador = miembros.find(
+                    (miembro) =>
+                      miembro.user_id === evento.creado_por
+                  )
+
+                  return (
+                    <article
+                      className="calendar-event-card"
+                      key={evento.id}
+                    >
+                      <div className="calendar-event-date">
+                        <span>
+                          {new Date(
+                            evento.fecha_inicio
+                          ).toLocaleDateString(
+                            'es-CL',
+                            { day: '2-digit' }
+                          )}
+                        </span>
+
+                        <small>
+                          {new Date(
+                            evento.fecha_inicio
+                          )
+                            .toLocaleDateString(
+                              'es-CL',
+                              { month: 'short' }
+                            )
+                            .replace('.', '')
+                            .toUpperCase()}
+                        </small>
+                      </div>
+
+                      <div className="calendar-event-content">
+                        <div className="calendar-event-top">
+                          <div>
+                            <h3>{evento.titulo}</h3>
+
+                            <p>
+                              {evento.todo_el_dia
+                                ? 'Todo el día'
+                                : formatearFechaEvento(
+                                    evento.fecha_inicio
+                                  )}
+                            </p>
+                          </div>
+
+                          {evento.recordatorio_minutos !==
+                            null && (
+                            <span className="calendar-reminder">
+                              🔔{' '}
+                              {evento.recordatorio_minutos === 0
+                                ? 'Al comenzar'
+                                : `${evento.recordatorio_minutos} min antes`}
+                            </span>
+                          )}
+                        </div>
+
+                        {evento.descripcion && (
+                          <p className="calendar-description">
+                            {evento.descripcion}
+                          </p>
+                        )}
+
+                        <div className="calendar-event-footer">
+                          <div className="calendar-assignees-row">
+                            {evento.asignados.map((miembro) => (
+                              <div
+                                className="calendar-assignee"
+                                key={miembro.id}
+                                title={miembro.nombre}
+                              >
+                                <div
+                                  className="calendar-assignee-avatar"
+                                  style={{
+                                    borderColor:
+                                      miembro.color,
+                                    color: miembro.color
+                                  }}
+                                >
+                                  {miembro.avatar_url ? (
+                                    <img
+                                      src={miembro.avatar_url}
+                                      alt={miembro.nombre}
+                                    />
+                                  ) : (
+                                    obtenerInicial(
+                                      miembro.nombre
+                                    )
+                                  )}
+                                </div>
+
+                                <span>{miembro.nombre}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <small className="calendar-created-by">
+                            Creado por:{' '}
+                            {creador?.nombre || 'Miembro'}
+                          </small>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </section>
         )}
 
         {seccion === 'familia' && (
@@ -732,6 +1229,243 @@ const eliminarIntegrante = async () => {
           </section>
         )}
       </main>
+
+      {mostrarModalEvento && (
+        <div
+          className="member-modal-overlay"
+          onClick={cerrarModalEvento}
+        >
+          <div
+            className="member-modal calendar-event-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="member-modal-header">
+              <div>
+                <p className="eyebrow">
+                  NUEVO EVENTO
+                </p>
+
+                <h2>Agregar al calendario</h2>
+              </div>
+
+              <button
+                type="button"
+                className="member-modal-close"
+                onClick={cerrarModalEvento}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={crearEvento}>
+              <div className="member-form-field">
+                <label>Título</label>
+
+                <input
+                  type="text"
+                  placeholder="Ej: Dentista Renato"
+                  value={tituloEvento}
+                  onChange={(e) =>
+                    setTituloEvento(e.target.value)
+                  }
+                  autoFocus
+                />
+              </div>
+
+              <div className="member-form-field">
+                <label>Descripción</label>
+
+                <textarea
+                  placeholder="Agrega detalles opcionales..."
+                  value={descripcionEvento}
+                  onChange={(e) =>
+                    setDescripcionEvento(e.target.value)
+                  }
+                  rows="3"
+                />
+              </div>
+
+              <div className="calendar-form-grid">
+                <div className="member-form-field">
+                  <label>Fecha</label>
+
+                  <input
+                    type="date"
+                    value={fechaEvento}
+                    onChange={(e) =>
+                      setFechaEvento(e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="member-form-field">
+                  <label>Hora</label>
+
+                  <input
+                    type="time"
+                    value={horaEvento}
+                    onChange={(e) =>
+                      setHoraEvento(e.target.value)
+                    }
+                    disabled={todoElDiaEvento}
+                  />
+                </div>
+              </div>
+
+              <label className="calendar-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={todoElDiaEvento}
+                  onChange={(e) => {
+                    setTodoElDiaEvento(
+                      e.target.checked
+                    )
+
+                    if (e.target.checked) {
+                      setHoraEvento('')
+                    }
+                  }}
+                />
+
+                <span>Evento de todo el día</span>
+              </label>
+
+              <div className="member-form-field">
+                <label>Recordatorio</label>
+
+                <select
+                  value={recordatorioEvento}
+                  onChange={(e) =>
+                    setRecordatorioEvento(
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="">
+                    Sin recordatorio
+                  </option>
+                  <option value="0">
+                    Al comenzar
+                  </option>
+                  <option value="15">
+                    15 minutos antes
+                  </option>
+                  <option value="30">
+                    30 minutos antes
+                  </option>
+                  <option value="60">
+                    1 hora antes
+                  </option>
+                  <option value="1440">
+                    1 día antes
+                  </option>
+                </select>
+              </div>
+
+              <div className="member-form-field">
+                <div className="calendar-assignment-header">
+                  <label>Asignar a</label>
+
+                  <button
+                    type="button"
+                    className="calendar-select-all"
+                    onClick={seleccionarTodaLaFamilia}
+                  >
+                    {asignadosEvento.length ===
+                    miembros.length
+                      ? 'Quitar todos'
+                      : 'Toda la familia'}
+                  </button>
+                </div>
+
+                <div className="calendar-member-selector">
+                  {miembros.map((miembro) => {
+                    const seleccionado =
+                      asignadosEvento.includes(
+                        miembro.id
+                      )
+
+                    return (
+                      <button
+                        type="button"
+                        key={miembro.id}
+                        className={`calendar-member-option ${
+                          seleccionado
+                            ? 'selected'
+                            : ''
+                        }`}
+                        style={{
+                          borderColor: seleccionado
+                            ? miembro.color
+                            : undefined
+                        }}
+                        onClick={() =>
+                          alternarAsignadoEvento(
+                            miembro.id
+                          )
+                        }
+                      >
+                        <span
+                          className="calendar-member-mini-avatar"
+                          style={{
+                            borderColor:
+                              miembro.color,
+                            color: miembro.color
+                          }}
+                        >
+                          {miembro.avatar_url ? (
+                            <img
+                              src={miembro.avatar_url}
+                              alt={miembro.nombre}
+                            />
+                          ) : (
+                            obtenerInicial(
+                              miembro.nombre
+                            )
+                          )}
+                        </span>
+
+                        <span>{miembro.nombre}</span>
+
+                        <strong>
+                          {seleccionado ? '✓' : '+'}
+                        </strong>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {mensajeEvento && (
+                <div className="member-form-message">
+                  {mensajeEvento}
+                </div>
+              )}
+
+              <div className="member-modal-actions">
+                <button
+                  type="button"
+                  className="member-cancel-button"
+                  onClick={cerrarModalEvento}
+                  disabled={guardandoEvento}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  className="member-save-button"
+                  disabled={guardandoEvento}
+                >
+                  {guardandoEvento
+                    ? 'Guardando...'
+                    : 'Crear evento'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {mostrarModalIntegrante && (
         <div
