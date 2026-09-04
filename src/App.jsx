@@ -159,6 +159,7 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [codigoInvitacionCopiado, setCodigoInvitacionCopiado] = useState(false)
   const [dispositivoId] = useState(() => obtenerDispositivoId())
   const [loginReciente, setLoginReciente] = useState(false)
+  const [novedadesTareas, setNovedadesTareas] = useState(0)
 
   useEffect(() => {
     if (!mensajeNotificaciones) return
@@ -683,6 +684,105 @@ const [mensajeEdicion, setMensajeEdicion] =
 
     cargarTareas()
   }, [familia?.id])
+
+  useEffect(() => {
+    if (!familia?.id || !usuario?.id) return
+
+    let temporizadorRecarga = null
+
+    const recargarTareasRealtime = async () => {
+      try {
+        const { data: tareasData, error: errorTareas } = await supabase
+          .from('tareas_familiares')
+          .select(`
+            id,
+            familia_id,
+            nombre,
+            descripcion,
+            prioridad,
+            fecha_limite,
+            estado,
+            creado_por,
+            fecha_completada,
+            created_at
+          `)
+          .eq('familia_id', familia.id)
+          .order('created_at', { ascending: false })
+
+        if (errorTareas) throw errorTareas
+
+        const idsTareas = (tareasData ?? []).map((tarea) => tarea.id)
+        let asignaciones = []
+
+        if (idsTareas.length > 0) {
+          const { data, error } = await supabase
+            .from('tarea_asignados')
+            .select(`
+              tarea_id,
+              miembro_id,
+              miembros_familia (
+                id,
+                nombre,
+                color,
+                avatar_url
+              )
+            `)
+            .in('tarea_id', idsTareas)
+
+          if (error) throw error
+          asignaciones = data ?? []
+        }
+
+        setTareas(
+          (tareasData ?? []).map((tarea) => ({
+            ...tarea,
+            asignados: asignaciones
+              .filter((item) => item.tarea_id === tarea.id)
+              .map((item) => item.miembros_familia)
+              .filter(Boolean)
+          }))
+        )
+      } catch (error) {
+        console.error('Error al actualizar tareas en tiempo real:', error)
+      }
+    }
+
+    const canalTareas = supabase
+      .channel(`tareas-familia-${familia.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'tareas_familiares',
+          filter: `familia_id=eq.${familia.id}`
+        },
+        (payload) => {
+          if (payload.new?.creado_por !== usuario.id) {
+            setNovedadesTareas((actual) => actual + 1)
+          }
+
+          // La asignación se guarda justo después de crear la tarea.
+          // Esperamos un instante para traer también los integrantes asignados.
+          window.clearTimeout(temporizadorRecarga)
+          temporizadorRecarga = window.setTimeout(() => {
+            recargarTareasRealtime()
+          }, 350)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      window.clearTimeout(temporizadorRecarga)
+      supabase.removeChannel(canalTareas)
+    }
+  }, [familia?.id, usuario?.id])
+
+  useEffect(() => {
+    if (seccion === 'tareas' && novedadesTareas > 0) {
+      setNovedadesTareas(0)
+    }
+  }, [seccion, novedadesTareas])
 
   useEffect(() => {
     const cargarGastos = async () => {
@@ -2754,7 +2854,14 @@ const eliminarIntegrante = async () => {
             }`}
             onClick={() => setSeccion('tareas')}
           >
-            ✅ Tareas
+            <span className="menu-item-con-badge">
+              <span>✅ Tareas</span>
+              {novedadesTareas > 0 && (
+                <span className="contador-novedades">
+                  {novedadesTareas > 99 ? '99+' : novedadesTareas}
+                </span>
+              )}
+            </span>
           </button>
 
           <button
@@ -4139,7 +4246,14 @@ const eliminarIntegrante = async () => {
           className={seccion === 'tareas' ? 'active' : ''}
           onClick={() => setSeccion('tareas')}
         >
-          <span>✅</span>
+          <span className="mobile-nav-icono">
+            ✅
+            {novedadesTareas > 0 && (
+              <span className="contador-novedades contador-novedades-mobile">
+                {novedadesTareas > 99 ? '99+' : novedadesTareas}
+              </span>
+            )}
+          </span>
           <small>Tareas</small>
         </button>
 
