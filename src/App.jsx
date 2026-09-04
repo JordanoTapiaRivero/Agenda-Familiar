@@ -51,7 +51,6 @@ function App() {
   const [miembros, setMiembros] = useState([])
   const [seccion, setSeccion] = useState('inicio')
   const [cargandoFamilia, setCargandoFamilia] = useState(false)
-  const [familiaVerificada, setFamiliaVerificada] = useState(false)
 
   const [mostrarModalIntegrante, setMostrarModalIntegrante] =
     useState(false)
@@ -161,6 +160,9 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [dispositivoId] = useState(() => obtenerDispositivoId())
   const [loginReciente, setLoginReciente] = useState(false)
   const [novedadesTareas, setNovedadesTareas] = useState(0)
+  const [novedadesCalendario, setNovedadesCalendario] = useState(0)
+  const [novedadesCompras, setNovedadesCompras] = useState(0)
+  const [novedadesGastos, setNovedadesGastos] = useState(0)
   const [diagnosticoPush, setDiagnosticoPush] = useState(null)
 
   useEffect(() => {
@@ -448,11 +450,9 @@ const [mensajeEdicion, setMensajeEdicion] =
       if (!usuario) {
         setFamilia(null)
         setMiembros([])
-        setFamiliaVerificada(false)
         return
       }
 
-      setFamiliaVerificada(false)
       setCargandoFamilia(true)
 
       const { data, error } = await supabase
@@ -473,7 +473,6 @@ const [mensajeEdicion, setMensajeEdicion] =
         setFamilia(null)
         setMiembros([])
         setCargandoFamilia(false)
-        setFamiliaVerificada(true)
         return
       }
 
@@ -512,7 +511,6 @@ const [mensajeEdicion, setMensajeEdicion] =
       }
 
       setCargandoFamilia(false)
-      setFamiliaVerificada(true)
     }
 
     cargarFamilia()
@@ -744,11 +742,7 @@ const [mensajeEdicion, setMensajeEdicion] =
           table: 'tareas_familiares',
           filter: `familia_id=eq.${familia.id}`
         },
-        (payload) => {
-          if (payload.new?.creado_por !== usuario.id) {
-            setNovedadesTareas((actual) => actual + 1)
-          }
-
+        () => {
           // La asignación se guarda justo después de crear la tarea.
           // Esperamos un instante para traer también los integrantes asignados.
           window.clearTimeout(temporizadorRecarga)
@@ -766,10 +760,117 @@ const [mensajeEdicion, setMensajeEdicion] =
   }, [familia?.id, usuario?.id])
 
   useEffect(() => {
-    if (seccion === 'tareas' && novedadesTareas > 0) {
-      setNovedadesTareas(0)
+    if (!usuario?.id || !familia?.id) return
+
+    let desmontado = false
+
+    const aplicarContadores = (filas = []) => {
+      const contadores = {
+        tareas: 0,
+        calendario: 0,
+        compras: 0,
+        gastos: 0
+      }
+
+      for (const fila of filas) {
+        if (Object.prototype.hasOwnProperty.call(contadores, fila.seccion)) {
+          contadores[fila.seccion] += 1
+        }
+      }
+
+      if (desmontado) return
+
+      setNovedadesTareas(contadores.tareas)
+      setNovedadesCalendario(contadores.calendario)
+      setNovedadesCompras(contadores.compras)
+      setNovedadesGastos(contadores.gastos)
     }
-  }, [seccion, novedadesTareas])
+
+    const cargarContadoresNovedades = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('novedades_familiares')
+          .select('seccion')
+          .eq('usuario_id', usuario.id)
+          .eq('familia_id', familia.id)
+
+        if (error) throw error
+
+        aplicarContadores(data ?? [])
+      } catch (error) {
+        console.error('Error al cargar novedades familiares:', error)
+      }
+    }
+
+    const refrescarSiVisible = () => {
+      if (document.visibilityState === 'visible') {
+        cargarContadoresNovedades()
+      }
+    }
+
+    cargarContadoresNovedades()
+
+    const canalNovedades = supabase
+      .channel(`novedades-usuario-${usuario.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'novedades_familiares',
+          filter: `usuario_id=eq.${usuario.id}`
+        },
+        () => {
+          cargarContadoresNovedades()
+        }
+      )
+      .subscribe()
+
+    window.addEventListener('focus', cargarContadoresNovedades)
+    document.addEventListener('visibilitychange', refrescarSiVisible)
+
+    return () => {
+      desmontado = true
+      supabase.removeChannel(canalNovedades)
+      window.removeEventListener('focus', cargarContadoresNovedades)
+      document.removeEventListener('visibilitychange', refrescarSiVisible)
+    }
+  }, [usuario?.id, familia?.id])
+
+  useEffect(() => {
+    if (!usuario?.id || !familia?.id) return
+
+    const seccionesConNovedades = [
+      'tareas',
+      'calendario',
+      'compras',
+      'gastos'
+    ]
+
+    if (!seccionesConNovedades.includes(seccion)) return
+
+    const marcarSeccionComoVista = async () => {
+      try {
+        const { error } = await supabase
+          .from('novedades_familiares')
+          .delete()
+          .eq('usuario_id', usuario.id)
+          .eq('familia_id', familia.id)
+          .eq('seccion', seccion)
+
+        if (error) throw error
+
+        if (seccion === 'tareas') setNovedadesTareas(0)
+        if (seccion === 'calendario') setNovedadesCalendario(0)
+        if (seccion === 'compras') setNovedadesCompras(0)
+        if (seccion === 'gastos') setNovedadesGastos(0)
+      } catch (error) {
+        console.error('Error al marcar novedades como vistas:', error)
+      }
+    }
+
+    marcarSeccionComoVista()
+  }, [seccion, usuario?.id, familia?.id])
 
   useEffect(() => {
     const cargarGastos = async () => {
@@ -2803,7 +2904,7 @@ const eliminarIntegrante = async () => {
     )
   }
 
-  if (cargandoFamilia || !familiaVerificada) {
+  if (cargandoFamilia) {
     return (
       <div className="loading-screen">
         <p>Cargando tu familia...</p>
@@ -2848,7 +2949,14 @@ const eliminarIntegrante = async () => {
             }`}
             onClick={() => setSeccion('calendario')}
           >
-            📅 Calendario
+            <span className="menu-item-con-badge">
+              <span>📅 Calendario</span>
+              {novedadesCalendario > 0 && (
+                <span className="contador-novedades">
+                  {novedadesCalendario > 99 ? '99+' : novedadesCalendario}
+                </span>
+              )}
+            </span>
           </button>
 
           <button
@@ -2873,7 +2981,14 @@ const eliminarIntegrante = async () => {
             }`}
             onClick={() => setSeccion('compras')}
           >
-            🛒 Compras
+            <span className="menu-item-con-badge">
+              <span>🛒 Compras</span>
+              {novedadesCompras > 0 && (
+                <span className="contador-novedades">
+                  {novedadesCompras > 99 ? '99+' : novedadesCompras}
+                </span>
+              )}
+            </span>
           </button>
 
           <button
@@ -2882,7 +2997,14 @@ const eliminarIntegrante = async () => {
             }`}
             onClick={() => setSeccion('gastos')}
           >
-            💰 Gastos
+            <span className="menu-item-con-badge">
+              <span>💰 Gastos</span>
+              {novedadesGastos > 0 && (
+                <span className="contador-novedades">
+                  {novedadesGastos > 99 ? '99+' : novedadesGastos}
+                </span>
+              )}
+            </span>
           </button>
 
           <button
@@ -4303,7 +4425,14 @@ const eliminarIntegrante = async () => {
           className={seccion === 'calendario' ? 'active' : ''}
           onClick={() => setSeccion('calendario')}
         >
-          <span>📅</span>
+          <span className="mobile-nav-icono">
+            📅
+            {novedadesCalendario > 0 && (
+              <span className="contador-novedades contador-novedades-mobile">
+                {novedadesCalendario > 99 ? '99+' : novedadesCalendario}
+              </span>
+            )}
+          </span>
           <small>Calendario</small>
         </button>
 
@@ -4328,7 +4457,14 @@ const eliminarIntegrante = async () => {
           className={seccion === 'compras' ? 'active' : ''}
           onClick={() => setSeccion('compras')}
         >
-          <span>🛒</span>
+          <span className="mobile-nav-icono">
+            🛒
+            {novedadesCompras > 0 && (
+              <span className="contador-novedades contador-novedades-mobile">
+                {novedadesCompras > 99 ? '99+' : novedadesCompras}
+              </span>
+            )}
+          </span>
           <small>Compras</small>
         </button>
 
@@ -4337,7 +4473,14 @@ const eliminarIntegrante = async () => {
           className={seccion === 'gastos' ? 'active' : ''}
           onClick={() => setSeccion('gastos')}
         >
-          <span>💰</span>
+          <span className="mobile-nav-icono">
+            💰
+            {novedadesGastos > 0 && (
+              <span className="contador-novedades contador-novedades-mobile">
+                {novedadesGastos > 99 ? '99+' : novedadesGastos}
+              </span>
+            )}
+          </span>
           <small>Gastos</small>
         </button>
 
