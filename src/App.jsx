@@ -597,10 +597,26 @@ const [mensajeEdicion, setMensajeEdicion] =
 
     cargarEventos()
 
+    const canalEventos = supabase
+      .channel(`eventos-familia-${familia?.id || 'sin-familia'}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'eventos'
+        },
+        () => {
+          cargarEventos()
+        }
+      )
+      .subscribe()
+
     window.addEventListener('focus', cargarEventos)
     document.addEventListener('visibilitychange', recargarAlVolver)
 
     return () => {
+      supabase.removeChannel(canalEventos)
       window.removeEventListener('focus', cargarEventos)
       document.removeEventListener('visibilitychange', recargarAlVolver)
     }
@@ -764,14 +780,13 @@ const [mensajeEdicion, setMensajeEdicion] =
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
-          table: 'tareas_familiares',
-          filter: `familia_id=eq.${familia.id}`
+          table: 'tareas_familiares'
         },
         () => {
-          // La asignación se guarda justo después de crear la tarea.
-          // Esperamos un instante para traer también los integrantes asignados.
+          // Recargamos ante crear, editar, completar o eliminar.
+          // Esperamos un instante para traer también asignaciones actualizadas.
           window.clearTimeout(temporizadorRecarga)
           temporizadorRecarga = window.setTimeout(() => {
             recargarTareasRealtime()
@@ -1012,14 +1027,24 @@ const [mensajeEdicion, setMensajeEdicion] =
           productos = data ?? []
         }
 
-        setListasCompras(
-          (listasData ?? []).map((lista) => ({
-            ...lista,
-            productos: productos.filter(
-              (producto) => producto.lista_id === lista.id
-            )
-          }))
-        )
+        const listasCompletas = (listasData ?? []).map((lista) => ({
+          ...lista,
+          productos: productos.filter(
+            (producto) => producto.lista_id === lista.id
+          )
+        }))
+
+        setListasCompras(listasCompletas)
+
+        setListaCompraSeleccionada((actual) => {
+          if (!actual) return actual
+
+          const actualizada = listasCompletas.find(
+            (lista) => lista.id === actual.id
+          )
+
+          return actualizada || null
+        })
       } catch (error) {
         console.error('Error al cargar compras:', error)
         setListasCompras([])
@@ -1036,10 +1061,48 @@ const [mensajeEdicion, setMensajeEdicion] =
 
     cargarCompras()
 
+    let temporizadorCompras = null
+
+    const recargarComprasRealtime = () => {
+      window.clearTimeout(temporizadorCompras)
+      temporizadorCompras = window.setTimeout(() => {
+        cargarCompras()
+      }, 180)
+    }
+
+    const canalListasCompras = supabase
+      .channel(`listas-compras-familia-${familia?.id || 'sin-familia'}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'listas_compras'
+        },
+        recargarComprasRealtime
+      )
+      .subscribe()
+
+    const canalProductosCompra = supabase
+      .channel(`productos-compras-familia-${familia?.id || 'sin-familia'}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'productos_compra'
+        },
+        recargarComprasRealtime
+      )
+      .subscribe()
+
     window.addEventListener('focus', cargarCompras)
     document.addEventListener('visibilitychange', recargarAlVolver)
 
     return () => {
+      window.clearTimeout(temporizadorCompras)
+      supabase.removeChannel(canalListasCompras)
+      supabase.removeChannel(canalProductosCompra)
       window.removeEventListener('focus', cargarCompras)
       document.removeEventListener('visibilitychange', recargarAlVolver)
     }
