@@ -3565,3 +3565,959 @@ svg {
   box-shadow: 0 0 0 2px #ffffff;
 }
 
+/* =========================================================
+   AGENDA FAMILIAR — ACCIONES Y MODALES V3
+   Diseño final unificado para PC + celular
+   ========================================================= */
+
+/* =========================================================
+   BOTONES PRINCIPALES DE CADA SECCIÓN
+   Evento · Tarea · Compras · Gasto
+   ========================================================= */
+
+.calendar-management-header .add-member-button,
+.tasks-management-header .add-member-button,
+.shopping-management-header .add-member-button,
+.expenses-management-header .add-member-button {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+/* Evento */
+.calendar-management-header .add-member-button {
+  background: linear-gradient(135deg, #3478f6, #5b8df7);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(52, 120, 246, 0.22);
+}
+
+/* Tarea */
+.tasks-management-header .add-member-button {
+  background: linear-gradient(135deg, #6754e7, #806df1);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(103, 84, 231, 0.22);
+}
+
+/* Compras */
+.shopping-management-header .add-member-button {
+  background: linear-gradient(135deg, #e69a22, #f2ae43);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(230, 154, 34, 0.22);
+}
+
+/* Gastos */
+.expenses-management-header .add-member-button {
+  background: linear-gradient(135deg, #159b68, #2ab47f);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(21, 155, 104, 0.22);
+}
+
+.calendar-management-header .add-member-button::before,
+.tasks-management-header .add-member-button::before,
+.shopping-management-header .add-member-button::before,
+.expenses-management-header .add-member-button::before {
+  content: '+';
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 19px;
+  line-height: 1;
+}
+
+.calendar-management-header .add-member-button:hover,
+.tasks-management-header .add-member-button:hover,
+.shopping-management-header .add-member-button:hover,
+.expenses-management-header .add-member-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+}
+
+.calendar-management-header .add-member-button:active,
+.tasks-management-header .add-member-button:active,
+.shopping-management-header .add-member-button:active,
+.expenses-management-header .add-member-button:active {
+  transform: translateY(0);
+}
+
+/* Los encabezados quedan más ordenados en escritorio */
+.calendar-management-header,
+.tasks-management-header,
+.shopping-management-header,
+.expenses-management-header {
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid rgba(223, 226, 236, 0.82);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(35, 40, 65, 0.055);
+}
+
+/* =========================================================
+   MODALES CREAR / EDITAR
+   ========================================================= */
+
+.calendar-event-modal,
+.task-modal,
+.shopping-list-modal,
+.expense-modal {
+  --modal-accent: #6754e7;
+  --modal-soft: #f1efff;
+  --modal-soft-2: #f8f7ff;
+  --modal-border: #dcd6ff;
+  --modal-shadow: rgba(103, 84, 231, 0.16);
+
+  width: min(660px, calc(100vw - 36px));
+  max-width: 660px;
+  max-height: calc(100dvh - 42px);
+  overflow-y: auto;
+  position: relative;
+  padding: 0;
+  border: 1px solid var(--modal-border);
+  border-radius: 26px;
+  background: #f7f8fc;
+  box-shadow: 0 30px 90px rgba(27, 32, 55, 0.24);
+}
+
+/* Color por tipo */
+.calendar-event-modal {
+  --modal-accent: #3478f6;
+  --modal-soft: #eaf2ff;
+  --modal-soft-2: #f5f9ff;
+  --modal-border: #ccdfff;
+  --modal-shadow: rgba(52, 120, 246, 0.16);
+}
+
+.task-modal {
+  --modal-accent: #6754e7;
+  --modal-soft: #eeeaff;
+  --modal-soft-2: #f8f6ff;
+  --modal-border: #d9d2ff;
+  --modal-shadow: rgba(103, 84, 231, 0.17);
+}
+
+.shopping-list-modal {
+  --modal-accent: #e69a22;
+  --modal-soft: #fff1d9;
+  --modal-soft-2: #fffaf1;
+  --modal-border: #f1d8aa;
+  --modal-shadow: rgba(230, 154, 34, 0.17);
+}
+
+.expense-modal {
+  --modal-accent: #159b68;
+  --modal-soft: #e6f8f0;
+  --modal-soft-2: #f4fbf8;
+  --modal-border: #c9eadc;
+  --modal-shadow: rgba(21, 155, 104, 0.17);
+}
+
+/* Cubrimos estilos experimentales anteriores */
+.edit-action-modal,
+.edit-event-modal,
+.edit-task-modal,
+.edit-expense-modal {
+  border-color: var(--modal-border);
+  background: #f7f8fc;
+}
+
+.edit-action-modal::before,
+.edit-action-modal .member-modal-header::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Encabezado con bloque de color real */
+.calendar-event-modal .member-modal-header,
+.task-modal .member-modal-header,
+.shopping-list-modal .member-modal-header,
+.expense-modal .member-modal-header,
+.edit-action-modal .member-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  min-height: 104px;
+  margin: 0;
+  padding: 23px 26px 21px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--modal-border);
+  background:
+    radial-gradient(circle at 92% 10%, rgba(255, 255, 255, 0.88), transparent 30%),
+    linear-gradient(135deg, var(--modal-soft), var(--modal-soft-2));
+  backdrop-filter: blur(12px);
+}
+
+.calendar-event-modal .member-modal-header > div:first-child,
+.task-modal .member-modal-header > div:first-child,
+.shopping-list-modal .member-modal-header > div:first-child,
+.expense-modal .member-modal-header > div:first-child {
+  min-width: 0;
+}
+
+.calendar-event-modal .member-modal-header .eyebrow,
+.task-modal .member-modal-header .eyebrow,
+.shopping-list-modal .member-modal-header .eyebrow,
+.expense-modal .member-modal-header .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  margin: 0 0 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--modal-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.calendar-event-modal .member-modal-header h2,
+.task-modal .member-modal-header h2,
+.shopping-list-modal .member-modal-header h2,
+.expense-modal .member-modal-header h2,
+.edit-action-modal .member-modal-header h2 {
+  margin: 0;
+  color: #242838;
+  font-size: 25px;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  font-weight: 850;
+}
+
+.calendar-event-modal .member-modal-close,
+.task-modal .member-modal-close,
+.shopping-list-modal .member-modal-close,
+.expense-modal .member-modal-close,
+.edit-action-modal .member-modal-close {
+  width: 41px;
+  height: 41px;
+  min-width: 41px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.74);
+  color: #697083;
+  box-shadow: 0 7px 18px rgba(35, 40, 65, 0.09);
+}
+
+/* El formulario queda en una "zona" distinta al header */
+.calendar-event-modal form,
+.task-modal form,
+.shopping-list-modal form,
+.expense-modal form {
+  padding: 25px 26px 27px;
+}
+
+/* Tarjetas internas: menos blanco plano */
+.calendar-event-modal .member-form-field,
+.task-modal .member-form-field,
+.shopping-list-modal .member-form-field,
+.expense-modal .member-form-field {
+  margin-bottom: 19px;
+}
+
+.calendar-event-modal .member-form-field label,
+.task-modal .member-form-field label,
+.shopping-list-modal .member-form-field label,
+.expense-modal .member-form-field label {
+  margin-bottom: 8px;
+  color: #454b5d;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.calendar-event-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.calendar-event-modal .member-form-field select,
+.calendar-event-modal .member-form-field textarea,
+.task-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.task-modal .member-form-field select,
+.task-modal .member-form-field textarea,
+.shopping-list-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.shopping-list-modal .member-form-field select,
+.shopping-list-modal .member-form-field textarea,
+.expense-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.expense-modal .member-form-field select,
+.expense-modal .member-form-field textarea {
+  width: 100%;
+  min-height: 49px;
+  border: 1.5px solid #d9dde8;
+  border-radius: 14px;
+  background: #fff;
+  color: #303442;
+  box-shadow: 0 5px 14px rgba(38, 43, 68, 0.055);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.calendar-event-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.calendar-event-modal .member-form-field select,
+.task-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.task-modal .member-form-field select,
+.shopping-list-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.shopping-list-modal .member-form-field select,
+.expense-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.expense-modal .member-form-field select {
+  padding: 0 14px;
+}
+
+.calendar-event-modal .member-form-field textarea,
+.task-modal .member-form-field textarea,
+.shopping-list-modal .member-form-field textarea,
+.expense-modal .member-form-field textarea {
+  min-height: 100px;
+  padding: 13px 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.calendar-event-modal .member-form-field input:not([type='checkbox']):not([type='color']):focus,
+.calendar-event-modal .member-form-field select:focus,
+.calendar-event-modal .member-form-field textarea:focus,
+.task-modal .member-form-field input:not([type='checkbox']):not([type='color']):focus,
+.task-modal .member-form-field select:focus,
+.task-modal .member-form-field textarea:focus,
+.shopping-list-modal .member-form-field input:not([type='checkbox']):not([type='color']):focus,
+.shopping-list-modal .member-form-field select:focus,
+.shopping-list-modal .member-form-field textarea:focus,
+.expense-modal .member-form-field input:not([type='checkbox']):not([type='color']):focus,
+.expense-modal .member-form-field select:focus,
+.expense-modal .member-form-field textarea:focus {
+  border-color: var(--modal-accent);
+  box-shadow:
+    0 0 0 4px var(--modal-soft),
+    0 7px 18px rgba(38, 43, 68, 0.07);
+}
+
+/* Grid con aire */
+.calendar-event-modal .calendar-form-grid,
+.task-modal .calendar-form-grid,
+.expense-modal .expense-form-grid {
+  gap: 16px;
+}
+
+/* Bloque "todo el día" */
+.calendar-event-modal .calendar-checkbox-row {
+  min-height: 48px;
+  margin: 1px 0 19px;
+  padding: 0 14px;
+  border: 1px solid var(--modal-border);
+  border-radius: 14px;
+  background: var(--modal-soft-2);
+}
+
+/* Asignar integrantes como tarjetas */
+.calendar-event-modal .calendar-assignment-header,
+.task-modal .calendar-assignment-header {
+  margin-bottom: 10px;
+}
+
+.calendar-event-modal .calendar-select-all,
+.task-modal .calendar-select-all {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--modal-border);
+  border-radius: 999px;
+  background: var(--modal-soft);
+  color: var(--modal-accent);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.calendar-event-modal .calendar-member-selector,
+.task-modal .calendar-member-selector {
+  gap: 12px;
+  margin-top: 11px;
+}
+
+.calendar-event-modal .calendar-member-option,
+.task-modal .calendar-member-option {
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1.5px solid #dde1eb;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 5px 13px rgba(38, 43, 68, 0.045);
+}
+
+.calendar-event-modal .calendar-member-option.selected,
+.task-modal .calendar-member-option.selected {
+  background: var(--modal-soft-2);
+  box-shadow:
+    0 0 0 2px var(--modal-border),
+    0 7px 17px var(--modal-shadow);
+}
+
+/* =========================================================
+   PIE DE BOTONES — MUCHO MÁS ORDENADO
+   ========================================================= */
+
+.calendar-event-modal .calendar-modal-actions,
+.task-modal .task-modal-actions,
+.shopping-list-modal .member-modal-actions,
+.expense-modal .member-modal-actions {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #dfe3ec;
+  gap: 16px;
+}
+
+/* Lado derecho de evento/tarea y gasto */
+.calendar-event-modal .calendar-modal-actions-right,
+.task-modal .calendar-modal-actions-right,
+.expense-modal .edit-modal-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+/* Todos los botones del modal */
+.calendar-event-modal .member-cancel-button,
+.calendar-event-modal .member-save-button,
+.calendar-event-modal .member-delete-button,
+.task-modal .member-cancel-button,
+.task-modal .member-save-button,
+.task-modal .task-delete-button,
+.shopping-list-modal .member-cancel-button,
+.shopping-list-modal .member-save-button,
+.expense-modal .member-cancel-button,
+.expense-modal .member-save-button,
+.expense-modal .member-delete-button {
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+/* Cancelar */
+.calendar-event-modal .member-cancel-button,
+.task-modal .member-cancel-button,
+.shopping-list-modal .member-cancel-button,
+.expense-modal .member-cancel-button {
+  border: 1px solid #d7dce7;
+  background: #fff;
+  color: #596174;
+  box-shadow: 0 5px 14px rgba(38, 43, 68, 0.055);
+}
+
+/* Crear / Guardar */
+.calendar-event-modal .member-save-button,
+.task-modal .member-save-button,
+.shopping-list-modal .member-save-button,
+.expense-modal .member-save-button {
+  border: 0;
+  background: var(--modal-accent);
+  color: #fff;
+  box-shadow: 0 10px 22px var(--modal-shadow);
+}
+
+.calendar-event-modal .member-save-button:hover:not(:disabled),
+.task-modal .member-save-button:hover:not(:disabled),
+.shopping-list-modal .member-save-button:hover:not(:disabled),
+.expense-modal .member-save-button:hover:not(:disabled) {
+  background: var(--modal-accent);
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+
+/* Eliminar: separado visualmente */
+.calendar-event-modal .member-delete-button,
+.task-modal .task-delete-button,
+.expense-modal .member-delete-button {
+  border: 1px solid #ffc6cb;
+  background: #fff0f2;
+  color: #c82d40;
+  box-shadow: none;
+}
+
+/* =========================================================
+   CELULAR
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .calendar-management-header,
+  .tasks-management-header,
+  .shopping-management-header,
+  .expenses-management-header {
+    align-items: stretch;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  /* Botón principal: grande pero no pegado al contenido */
+  .calendar-management-header .add-member-button,
+  .tasks-management-header .add-member-button,
+  .shopping-management-header .add-member-button,
+  .expenses-management-header .add-member-button {
+    width: 100%;
+    min-height: 52px;
+    border-radius: 15px;
+    font-size: 14px;
+  }
+
+  .member-modal-overlay:has(.calendar-event-modal),
+  .member-modal-overlay:has(.task-modal),
+  .member-modal-overlay:has(.shopping-list-modal),
+  .member-modal-overlay:has(.expense-modal) {
+    align-items: flex-end;
+    padding: 0;
+    background: rgba(22, 26, 42, 0.48);
+    backdrop-filter: blur(5px);
+  }
+
+  .calendar-event-modal,
+  .task-modal,
+  .shopping-list-modal,
+  .expense-modal,
+  .edit-action-modal {
+    width: 100%;
+    max-width: none;
+    max-height: 92dvh;
+    margin: 0;
+    border-radius: 27px 27px 0 0;
+    border-bottom: 0;
+  }
+
+  /* Barra para que parezca sheet nativa */
+  .calendar-event-modal::after,
+  .task-modal::after,
+  .shopping-list-modal::after,
+  .expense-modal::after {
+    content: '';
+    position: absolute;
+    z-index: 7;
+    top: 9px;
+    left: 50%;
+    width: 43px;
+    height: 4px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: rgba(94, 100, 118, 0.28);
+  }
+
+  .calendar-event-modal .member-modal-header,
+  .task-modal .member-modal-header,
+  .shopping-list-modal .member-modal-header,
+  .expense-modal .member-modal-header,
+  .edit-action-modal .member-modal-header {
+    min-height: 99px;
+    padding: 25px 17px 17px;
+  }
+
+  .calendar-event-modal .member-modal-header h2,
+  .task-modal .member-modal-header h2,
+  .shopping-list-modal .member-modal-header h2,
+  .expense-modal .member-modal-header h2,
+  .edit-action-modal .member-modal-header h2 {
+    font-size: 21px;
+  }
+
+  .calendar-event-modal form,
+  .task-modal form,
+  .shopping-list-modal form,
+  .expense-modal form {
+    padding: 20px 16px calc(22px + env(safe-area-inset-bottom));
+  }
+
+  .calendar-event-modal .calendar-form-grid,
+  .task-modal .calendar-form-grid,
+  .expense-modal .expense-form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .calendar-event-modal .calendar-member-selector,
+  .task-modal .calendar-member-selector {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Botones del modal con separación real */
+  .calendar-event-modal .calendar-modal-actions,
+  .task-modal .task-modal-actions,
+  .shopping-list-modal .member-modal-actions,
+  .expense-modal .member-modal-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 13px;
+    margin-top: 29px;
+    padding-top: 22px;
+  }
+
+  .calendar-event-modal .calendar-modal-actions-right,
+  .task-modal .calendar-modal-actions-right,
+  .expense-modal .edit-modal-actions-right {
+    width: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 12px;
+    margin-left: 0;
+  }
+
+  .calendar-event-modal .member-cancel-button,
+  .calendar-event-modal .member-save-button,
+  .calendar-event-modal .member-delete-button,
+  .task-modal .member-cancel-button,
+  .task-modal .member-save-button,
+  .task-modal .task-delete-button,
+  .shopping-list-modal .member-cancel-button,
+  .shopping-list-modal .member-save-button,
+  .expense-modal .member-cancel-button,
+  .expense-modal .member-save-button,
+  .expense-modal .member-delete-button {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  /* Eliminar separado del bloque Guardar/Cancelar */
+  .calendar-event-modal .member-delete-button,
+  .task-modal .task-delete-button,
+  .expense-modal .member-delete-button {
+    margin-top: 5px;
+  }
+}
+
+@media (max-width: 390px) {
+  .calendar-event-modal .member-modal-header,
+  .task-modal .member-modal-header,
+  .shopping-list-modal .member-modal-header,
+  .expense-modal .member-modal-header {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .calendar-event-modal form,
+  .task-modal form,
+  .shopping-list-modal form,
+  .expense-modal form {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+
+
+/* =========================================================
+   AGENDA FAMILIAR — BOTONES "AGREGAR / NUEVO" UNIFICADOS
+   ========================================================= */
+
+/* Los encabezados dejan de verse como tarjetas vacías */
+.family-management-header,
+.calendar-management-header,
+.tasks-management-header,
+.shopping-management-header,
+.expenses-management-header {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* Misma distribución en todas las secciones */
+.family-management-header,
+.calendar-management-header,
+.tasks-management-header,
+.shopping-management-header,
+.expenses-management-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+/* Un solo estilo para TODOS los botones de agregar */
+.family-management-header .add-member-button,
+.calendar-management-header .add-member-button,
+.tasks-management-header .add-member-button,
+.shopping-management-header .add-member-button,
+.expenses-management-header .add-member-button {
+  min-height: 44px;
+  width: auto;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: #6754e7;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(103, 84, 231, 0.22);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+/* Quita el cuadradito extra con + que hacía ver los botones distintos */
+.family-management-header .add-member-button::before,
+.calendar-management-header .add-member-button::before,
+.tasks-management-header .add-member-button::before,
+.shopping-management-header .add-member-button::before,
+.expenses-management-header .add-member-button::before {
+  content: none !important;
+  display: none !important;
+}
+
+.family-management-header .add-member-button:hover,
+.calendar-management-header .add-member-button:hover,
+.tasks-management-header .add-member-button:hover,
+.shopping-management-header .add-member-button:hover,
+.expenses-management-header .add-member-button:hover {
+  background: #5947d7;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 23px rgba(103, 84, 231, 0.27);
+}
+
+.family-management-header .add-member-button:active,
+.calendar-management-header .add-member-button:active,
+.tasks-management-header .add-member-button:active,
+.shopping-management-header .add-member-button:active,
+.expenses-management-header .add-member-button:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 15px rgba(103, 84, 231, 0.20);
+}
+
+/* Textos de contexto de cada sección */
+.calendar-management-header > div,
+.tasks-management-header > div,
+.shopping-management-header > div,
+.expenses-management-header > div,
+.family-management-header > div {
+  min-width: 0;
+}
+
+.calendar-management-header .eyebrow,
+.tasks-management-header .eyebrow,
+.shopping-management-header .eyebrow,
+.expenses-management-header .eyebrow {
+  margin-bottom: 5px;
+}
+
+.calendar-management-header .subtitle,
+.tasks-management-header .subtitle,
+.shopping-management-header .subtitle,
+.expenses-management-header .subtitle {
+  margin: 0;
+  max-width: 620px;
+}
+
+/* Calendario: ahora tiene contenido a la izquierda y botón a la derecha */
+.calendar-actions-only {
+  justify-content: space-between;
+}
+
+/* =========================================================
+   CELULAR
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .family-management-header,
+  .calendar-management-header,
+  .tasks-management-header,
+  .shopping-management-header,
+  .expenses-management-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .family-management-header .add-member-button,
+  .calendar-management-header .add-member-button,
+  .tasks-management-header .add-member-button,
+  .shopping-management-header .add-member-button,
+  .expenses-management-header .add-member-button {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+}
+
+
+
+/* =========================================================
+   EDITAR ACCIONES V4 — BORDES + PAPELERA A LA DERECHA
+   ========================================================= */
+
+/* Bordes más marcados en todo el formulario */
+.calendar-event-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.calendar-event-modal .member-form-field select,
+.calendar-event-modal .member-form-field textarea,
+.task-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.task-modal .member-form-field select,
+.task-modal .member-form-field textarea,
+.shopping-list-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.shopping-list-modal .member-form-field select,
+.shopping-list-modal .member-form-field textarea,
+.expense-modal .member-form-field input:not([type='checkbox']):not([type='color']),
+.expense-modal .member-form-field select,
+.expense-modal .member-form-field textarea {
+  border: 2px solid #cbd1df;
+}
+
+.calendar-event-modal .calendar-member-option,
+.task-modal .calendar-member-option {
+  border: 2px solid #d1d6e3;
+}
+
+.calendar-event-modal .calendar-member-option.selected,
+.task-modal .calendar-member-option.selected {
+  border-color: var(--modal-accent);
+  box-shadow:
+    0 0 0 2px var(--modal-soft),
+    0 7px 17px var(--modal-shadow);
+}
+
+/* Separador inferior más visible */
+.calendar-event-modal .calendar-modal-actions,
+.task-modal .task-modal-actions,
+.expense-modal .member-modal-actions {
+  border-top: 2px solid #d8dce7;
+}
+
+/* En edición: Cancelar + Guardar a la izquierda y papelera sola a la derecha */
+.edit-action-modal .calendar-modal-actions,
+.edit-action-modal .task-modal-actions,
+.edit-action-modal .member-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+/* Los grupos de Cancelar / Guardar */
+.edit-action-modal .calendar-modal-actions-right,
+.edit-action-modal .edit-modal-actions-right {
+  order: 1;
+  margin-left: 0;
+}
+
+/* En tarea el primer div contiene Eliminar y el segundo Cancelar/Guardar.
+   Invertimos visualmente los extremos. */
+.edit-task-modal .task-modal-actions > div:first-child {
+  order: 2;
+  margin-left: auto;
+}
+
+.edit-task-modal .task-modal-actions > div:last-child {
+  order: 1;
+}
+
+/* Papelera compacta, sin texto */
+.edit-action-modal .member-delete-button,
+.edit-action-modal .task-delete-button {
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+  border: 2px solid #f3aeb6;
+  border-radius: 14px;
+  background: #fff0f2;
+  box-shadow: 0 5px 14px rgba(190, 45, 64, 0.08);
+}
+
+.edit-action-modal .member-delete-button::before,
+.edit-action-modal .task-delete-button::before {
+  content: '🗑️';
+  color: initial;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.edit-action-modal .member-delete-button:hover:not(:disabled),
+.edit-action-modal .task-delete-button:hover:not(:disabled) {
+  border-color: #e9818d;
+  background: #ffe4e7;
+  transform: translateY(-1px);
+}
+
+/* Cancelar y Guardar también con bordes más definidos */
+.edit-action-modal .member-cancel-button {
+  border: 2px solid #cfd4df;
+}
+
+.edit-action-modal .member-save-button {
+  border: 2px solid var(--modal-accent);
+}
+
+/* =========================================================
+   CELULAR: mantener la papelera a la derecha
+   ========================================================= */
+@media (max-width: 700px) {
+  .edit-action-modal .calendar-modal-actions,
+  .edit-action-modal .task-modal-actions,
+  .edit-action-modal .member-modal-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px;
+    align-items: end;
+    gap: 14px;
+  }
+
+  .edit-action-modal .calendar-modal-actions-right,
+  .edit-action-modal .edit-modal-actions-right,
+  .edit-task-modal .task-modal-actions > div:last-child {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr);
+    gap: 10px;
+    order: 1;
+  }
+
+  .edit-task-modal .task-modal-actions > div:first-child {
+    width: 48px;
+    margin: 0;
+    order: 2;
+  }
+
+  .edit-action-modal .member-delete-button,
+  .edit-action-modal .task-delete-button {
+    width: 48px !important;
+    min-width: 48px;
+    height: 50px;
+    min-height: 50px;
+    margin: 0;
+  }
+
+  .edit-action-modal .member-cancel-button,
+  .edit-action-modal .member-save-button {
+    width: 100%;
+    min-height: 50px;
+  }
+}

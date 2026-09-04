@@ -3492,7 +3492,14 @@ const eliminarIntegrante = async () => {
 
         {seccion === 'calendario' && (
           <section className="calendar-management">
-            <div className="calendar-management-header calendar-actions-only">
+            <div className="calendar-management-header">
+              <div>
+                <p className="eyebrow">CALENDARIO FAMILIAR</p>
+                <p className="subtitle">
+                  Organiza eventos, fechas importantes y recordatorios de la familia.
+                </p>
+              </div>
+
               <button
                 className="add-member-button"
                 onClick={abrirNuevoEvento}
@@ -4556,7 +4563,7 @@ const eliminarIntegrante = async () => {
           onClick={cerrarModalEvento}
         >
           <div
-            className="member-modal calendar-event-modal"
+            className={`member-modal calendar-event-modal ${eventoEditando ? 'edit-action-modal edit-event-modal' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="member-modal-header">
@@ -4787,7 +4794,7 @@ const eliminarIntegrante = async () => {
                       guardandoEvento || eliminandoEvento
                     }
                   >
-                    Eliminar evento
+                    🗑️ Eliminar evento
                   </button>
                 )}
 
@@ -4874,7 +4881,7 @@ const eliminarIntegrante = async () => {
           onClick={cerrarModalGasto}
         >
           <div
-            className="member-modal expense-modal"
+            className={`member-modal expense-modal ${gastoEditando ? 'edit-action-modal edit-expense-modal' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="member-modal-header">
@@ -4988,26 +4995,42 @@ const eliminarIntegrante = async () => {
               )}
 
               <div className="member-modal-actions">
-                <button
-                  type="button"
-                  className="member-cancel-button"
-                  onClick={cerrarModalGasto}
-                  disabled={guardandoGasto}
-                >
-                  Cancelar
-                </button>
+                {gastoEditando && (
+                  <button
+                    type="button"
+                    className="member-delete-button"
+                    onClick={() => {
+                      solicitarEliminarGasto(gastoEditando)
+                      cerrarModalGasto()
+                    }}
+                    disabled={guardandoGasto}
+                  >
+                    🗑️ Eliminar gasto
+                  </button>
+                )}
 
-                <button
-                  type="submit"
-                  className="member-save-button"
-                  disabled={guardandoGasto}
-                >
-                  {guardandoGasto
-                    ? 'Guardando...'
-                    : gastoEditando
-                      ? 'Guardar cambios'
-                      : 'Registrar gasto'}
-                </button>
+                <div className="edit-modal-actions-right">
+                  <button
+                    type="button"
+                    className="member-cancel-button"
+                    onClick={cerrarModalGasto}
+                    disabled={guardandoGasto}
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="member-save-button"
+                    disabled={guardandoGasto}
+                  >
+                    {guardandoGasto
+                      ? 'Guardando...'
+                      : gastoEditando
+                        ? 'Guardar cambios'
+                        : 'Registrar gasto'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -5263,7 +5286,7 @@ const eliminarIntegrante = async () => {
           onClick={cerrarModalTarea}
         >
           <div
-            className="member-modal task-modal"
+            className={`member-modal task-modal ${tareaEditando ? 'edit-action-modal edit-task-modal' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="member-modal-header">
