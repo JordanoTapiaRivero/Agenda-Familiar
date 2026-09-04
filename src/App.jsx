@@ -163,7 +163,6 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [novedadesCalendario, setNovedadesCalendario] = useState(0)
   const [novedadesCompras, setNovedadesCompras] = useState(0)
   const [novedadesGastos, setNovedadesGastos] = useState(0)
-  const [diagnosticoPush, setDiagnosticoPush] = useState(null)
 
   useEffect(() => {
     if (!mensajeNotificaciones) return
@@ -2781,41 +2780,6 @@ const eliminarIntegrante = async () => {
     }
   }
 
-  const revisarDiagnosticoPush = async () => {
-    try {
-      if (
-        !('serviceWorker' in navigator) ||
-        !('PushManager' in window) ||
-        !('Notification' in window)
-      ) {
-        setDiagnosticoPush({
-          error: 'Este dispositivo no admite Push.'
-        })
-        return
-      }
-
-      const registro = await navigator.serviceWorker.register('/sw.js')
-      await navigator.serviceWorker.ready
-
-      const suscripcion = await registro.pushManager.getSubscription()
-      const datos = suscripcion?.toJSON?.() ?? null
-      const endpoint = datos?.endpoint ?? ''
-
-      setDiagnosticoPush({
-        permiso: Notification.permission,
-        dispositivoId,
-        endpointCompleto: endpoint,
-        endpointFinal: endpoint ? endpoint.slice(-36) : 'Sin suscripción',
-        esApple: endpoint.includes('web.push.apple.com')
-      })
-    } catch (error) {
-      console.error('Error al revisar diagnóstico Push:', error)
-      setDiagnosticoPush({
-        error: 'No se pudo revisar la suscripción Push.'
-      })
-    }
-  }
-
   const activarNotificaciones = async () => {
     setMensajeNotificaciones('')
 
@@ -2981,7 +2945,9 @@ const eliminarIntegrante = async () => {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-logo">🏠</div>
+          <div className="brand-logo">
+            <img src="/pwa-192x192.png" alt="Agenda Familiar" />
+          </div>
 
           <div>
             <h1>Agenda Familiar</h1>
@@ -3115,68 +3081,6 @@ const eliminarIntegrante = async () => {
             )}
           </div>
 
-          <div style={{ marginRight: '8px' }}>
-            <button
-              type="button"
-              onClick={revisarDiagnosticoPush}
-              style={{
-                border: '1px solid rgba(103,84,231,.25)',
-                background: 'rgba(255,255,255,.9)',
-                borderRadius: '12px',
-                padding: '8px 10px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              Diagnóstico Push
-            </button>
-          </div>
-
-          {diagnosticoPush && (
-            <div
-              style={{
-                position: 'fixed',
-                left: '12px',
-                right: '12px',
-                top: '92px',
-                zIndex: 99999,
-                background: '#ffffff',
-                border: '1px solid #ddd',
-                borderRadius: '16px',
-                padding: '14px',
-                boxShadow: '0 12px 30px rgba(0,0,0,.18)',
-                fontSize: '12px',
-                wordBreak: 'break-all'
-              }}
-            >
-              {diagnosticoPush.error ? (
-                <strong>{diagnosticoPush.error}</strong>
-              ) : (
-                <>
-                  <div><strong>Permiso:</strong> {diagnosticoPush.permiso}</div>
-                  <div><strong>Apple:</strong> {diagnosticoPush.esApple ? 'Sí' : 'No'}</div>
-                  <div><strong>Dispositivo:</strong> {diagnosticoPush.dispositivoId}</div>
-                  <div><strong>Final endpoint:</strong> {diagnosticoPush.endpointFinal}</div>
-                </>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setDiagnosticoPush(null)}
-                style={{
-                  marginTop: '10px',
-                  width: '100%',
-                  border: 0,
-                  borderRadius: '10px',
-                  padding: '9px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Cerrar
-              </button>
-            </div>
-          )}
 
           <div className="topbar-actions">
             <button

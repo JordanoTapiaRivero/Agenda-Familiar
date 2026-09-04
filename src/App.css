@@ -4521,3 +4521,23 @@ svg {
     min-height: 50px;
   }
 }
+
+
+
+/* =========================================================
+   LOGO REAL DE AGENDA FAMILIAR EN SIDEBAR
+   ========================================================= */
+.brand-logo {
+  overflow: hidden;
+  background: transparent;
+  padding: 0;
+  box-shadow: 0 6px 16px rgba(103, 84, 231, 0.16);
+}
+
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
