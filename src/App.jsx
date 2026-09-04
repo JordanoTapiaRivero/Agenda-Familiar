@@ -160,6 +160,18 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [dispositivoId] = useState(() => obtenerDispositivoId())
 
   useEffect(() => {
+    if (!mensajeNotificaciones) return
+
+    const temporizador = window.setTimeout(() => {
+      setMensajeNotificaciones('')
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(temporizador)
+    }
+  }, [mensajeNotificaciones])
+
+  useEffect(() => {
     const cargarSesion = async () => {
       const { data } = await supabase.auth.getSession()
 
