@@ -15,6 +15,23 @@ const convertirBase64AUint8Array = (base64String) => {
   return Uint8Array.from([...rawData].map((caracter) => caracter.charCodeAt(0)))
 }
 
+const CLAVE_DISPOSITIVO = 'agenda_familiar_dispositivo_id'
+
+const obtenerDispositivoId = () => {
+  let dispositivoId = localStorage.getItem(CLAVE_DISPOSITIVO)
+
+  if (!dispositivoId) {
+    dispositivoId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+    localStorage.setItem(CLAVE_DISPOSITIVO, dispositivoId)
+  }
+
+  return dispositivoId
+}
+
 function App() {
   const obtenerFechaLocalHoy = () => {
     const hoy = new Date()
@@ -140,6 +157,7 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [activandoNotificaciones, setActivandoNotificaciones] = useState(false)
   const [mensajeNotificaciones, setMensajeNotificaciones] = useState('')
   const [codigoInvitacionCopiado, setCodigoInvitacionCopiado] = useState(false)
+  const [dispositivoId] = useState(() => obtenerDispositivoId())
 
   useEffect(() => {
     const cargarSesion = async () => {
@@ -191,6 +209,84 @@ const [mensajeEdicion, setMensajeEdicion] =
 
     revisarNotificaciones()
   }, [usuario])
+
+  useEffect(() => {
+    if (!usuario?.id || !dispositivoId) return
+
+    let intervaloActividad = null
+    let desmontado = false
+
+    const registrarActividadDispositivo = async () => {
+      try {
+        let endpointPush = null
+
+        if (
+          'serviceWorker' in navigator &&
+          'PushManager' in window
+        ) {
+          const registro = await navigator.serviceWorker.register('/sw.js')
+          const suscripcion = await registro.pushManager.getSubscription()
+          endpointPush = suscripcion?.endpoint ?? null
+        }
+
+        if (desmontado) return
+
+        const { error } = await supabase
+          .from('sesiones_dispositivo')
+          .upsert(
+            {
+              user_id: usuario.id,
+              dispositivo_id: dispositivoId,
+              endpoint_push: endpointPush,
+              ultima_actividad: new Date().toISOString(),
+              estado: 'activa',
+              notificado_cierre: false
+            },
+            {
+              onConflict: 'user_id,dispositivo_id'
+            }
+          )
+
+        if (error) {
+          console.error(
+            'Error al registrar actividad del dispositivo:',
+            error
+          )
+        }
+      } catch (error) {
+        console.error(
+          'Error al registrar actividad del dispositivo:',
+          error
+        )
+      }
+    }
+
+    const registrarSiVisible = () => {
+      if (document.visibilityState === 'visible') {
+        registrarActividadDispositivo()
+      }
+    }
+
+    registrarActividadDispositivo()
+
+    intervaloActividad = window.setInterval(() => {
+      registrarActividadDispositivo()
+    }, 60 * 1000)
+
+    window.addEventListener('focus', registrarActividadDispositivo)
+    document.addEventListener('visibilitychange', registrarSiVisible)
+
+    return () => {
+      desmontado = true
+
+      if (intervaloActividad) {
+        window.clearInterval(intervaloActividad)
+      }
+
+      window.removeEventListener('focus', registrarActividadDispositivo)
+      document.removeEventListener('visibilitychange', registrarSiVisible)
+    }
+  }, [usuario?.id, dispositivoId])
 
   useEffect(() => {
     const cargarFamilia = async () => {
@@ -2337,6 +2433,29 @@ const eliminarIntegrante = async () => {
         throw error
       }
 
+      const { error: errorSesionDispositivo } = await supabase
+        .from('sesiones_dispositivo')
+        .upsert(
+          {
+            user_id: usuario.id,
+            dispositivo_id: dispositivoId,
+            endpoint_push: datos.endpoint,
+            ultima_actividad: new Date().toISOString(),
+            estado: 'activa',
+            notificado_cierre: false
+          },
+          {
+            onConflict: 'user_id,dispositivo_id'
+          }
+        )
+
+      if (errorSesionDispositivo) {
+        console.error(
+          'Las notificaciones se activaron, pero no se pudo vincular el dispositivo:',
+          errorSesionDispositivo
+        )
+      }
+
       setNotificacionesActivas(true)
       setMensajeNotificaciones('Notificaciones activadas correctamente.')
     } catch (error) {
@@ -2351,7 +2470,29 @@ const eliminarIntegrante = async () => {
 
   const cerrarSesion = async () => {
     setMostrarConfirmacionSalir(false)
-    await supabase.auth.signOut()
+
+    try {
+      if (usuario?.id && dispositivoId) {
+        const { error } = await supabase
+          .from('sesiones_dispositivo')
+          .update({
+            estado: 'cerrada_manual',
+            ultima_actividad: new Date().toISOString(),
+            notificado_cierre: true
+          })
+          .eq('user_id', usuario.id)
+          .eq('dispositivo_id', dispositivoId)
+
+        if (error) {
+          console.error(
+            'No se pudo marcar el cierre manual del dispositivo:',
+            error
+          )
+        }
+      }
+    } finally {
+      await supabase.auth.signOut()
+    }
   }
 
   if (cargandoSesion) {
