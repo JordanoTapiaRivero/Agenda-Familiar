@@ -590,7 +590,21 @@ const [mensajeEdicion, setMensajeEdicion] =
       }
     }
 
+    const recargarAlVolver = () => {
+      if (document.visibilityState === 'visible') {
+        cargarEventos()
+      }
+    }
+
     cargarEventos()
+
+    window.addEventListener('focus', cargarEventos)
+    document.addEventListener('visibilitychange', recargarAlVolver)
+
+    return () => {
+      window.removeEventListener('focus', cargarEventos)
+      document.removeEventListener('visibilitychange', recargarAlVolver)
+    }
   }, [familia?.id])
 
   useEffect(() => {
@@ -667,7 +681,21 @@ const [mensajeEdicion, setMensajeEdicion] =
       }
     }
 
+    const recargarAlVolver = () => {
+      if (document.visibilityState === 'visible') {
+        cargarTareas()
+      }
+    }
+
     cargarTareas()
+
+    window.addEventListener('focus', cargarTareas)
+    document.addEventListener('visibilitychange', recargarAlVolver)
+
+    return () => {
+      window.removeEventListener('focus', cargarTareas)
+      document.removeEventListener('visibilitychange', recargarAlVolver)
+    }
   }, [familia?.id])
 
   useEffect(() => {
@@ -913,7 +941,21 @@ const [mensajeEdicion, setMensajeEdicion] =
       }
     }
 
+    const recargarAlVolver = () => {
+      if (document.visibilityState === 'visible') {
+        cargarGastos()
+      }
+    }
+
     cargarGastos()
+
+    window.addEventListener('focus', cargarGastos)
+    document.addEventListener('visibilitychange', recargarAlVolver)
+
+    return () => {
+      window.removeEventListener('focus', cargarGastos)
+      document.removeEventListener('visibilitychange', recargarAlVolver)
+    }
   }, [familia?.id])
 
   useEffect(() => {
@@ -987,7 +1029,21 @@ const [mensajeEdicion, setMensajeEdicion] =
       }
     }
 
+    const recargarAlVolver = () => {
+      if (document.visibilityState === 'visible') {
+        cargarCompras()
+      }
+    }
+
     cargarCompras()
+
+    window.addEventListener('focus', cargarCompras)
+    document.addEventListener('visibilitychange', recargarAlVolver)
+
+    return () => {
+      window.removeEventListener('focus', cargarCompras)
+      document.removeEventListener('visibilitychange', recargarAlVolver)
+    }
   }, [familia?.id])
 
   const copiarCodigoInvitacion = async () => {
