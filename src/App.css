@@ -2872,5 +2872,652 @@ button {
     height: 32px;
   }
 }
+/* Estado del botón de notificaciones Push */
+.topbar-actions {
+  position: relative;
+}
+
+.notification-button.active {
+  background: rgba(103, 84, 231, 0.14);
+  box-shadow: 0 0 0 2px rgba(103, 84, 231, 0.12);
+}
+
+.notification-button:disabled {
+  cursor: default;
+}
+
+.notification-status-message {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: min(320px, 80vw);
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 30px rgba(33, 28, 70, 0.14);
+  font-size: 13px;
+  color: #4b4763;
+}
 
 
+/* =========================================================
+   RESPONSIVE FINAL - AGENDA FAMILIAR
+   PC / TABLET / CELULAR
+========================================================= */
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+.mobile-bottom-nav,
+.mobile-logout-button {
+  display: none;
+}
+
+/* Pantallas grandes */
+@media (min-width: 1400px) {
+  .main-content {
+    padding-left: 52px;
+    padding-right: 52px;
+  }
+}
+
+/* Notebook / tablet horizontal */
+@media (max-width: 1100px) {
+  .sidebar {
+    width: 220px;
+  }
+
+  .main-content {
+    margin-left: 220px;
+    width: calc(100% - 220px);
+    padding: 30px 28px 100px;
+  }
+
+  .brand h1 {
+    font-size: 21px;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .family-cards,
+  .expenses-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Tablet */
+@media (max-width: 860px) {
+  .sidebar {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    max-width: none;
+    padding: 24px 22px 120px;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    left: 50%;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 950;
+    width: min(720px, calc(100% - 24px));
+    min-height: 70px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: center;
+    padding: 7px 8px;
+    border: 1px solid rgba(224, 226, 235, 0.92);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 14px 38px rgba(32, 36, 62, 0.16);
+  }
+
+  .mobile-bottom-nav button {
+    min-width: 0;
+    min-height: 54px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: #7a8293;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px 2px;
+  }
+
+  .mobile-bottom-nav button span {
+    font-size: 19px;
+    line-height: 1;
+  }
+
+  .mobile-bottom-nav button small {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .mobile-bottom-nav button.active {
+    background: #f0edff;
+    color: #6754e7;
+  }
+
+  .mobile-logout-button {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #e3e6ee;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #c44747;
+    font-size: 19px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .floating-button {
+    right: 22px;
+    bottom: 100px;
+  }
+
+  .topbar,
+  .compact-topbar {
+    align-items: center;
+  }
+
+  .topbar h2,
+  .section-main-title {
+    font-size: 25px;
+  }
+
+  .family-section {
+    gap: 18px;
+    margin-top: 20px;
+    margin-bottom: 24px;
+  }
+
+  .summary-grid,
+  .shopping-list-grid,
+  .family-cards,
+  .expenses-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calendar-event-card,
+  .task-family-card,
+  .expense-row,
+  .shopping-list-card {
+    min-width: 0;
+  }
+}
+
+/* Celular */
+@media (max-width: 640px) {
+  .main-content {
+    padding: 18px 14px 118px;
+  }
+
+  .topbar,
+  .compact-topbar {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .topbar > div:first-child {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .topbar h2,
+  .section-main-title {
+    font-size: 22px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .notification-button,
+  .mobile-logout-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .notification-status-message {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .family-section {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 14px;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+  }
+
+  .family-section::-webkit-scrollbar {
+    display: none;
+  }
+
+  .family-member {
+    flex: 0 0 66px;
+    min-width: 66px;
+  }
+
+  .family-member span {
+    display: block;
+    max-width: 66px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .avatar,
+  .avatar-upload-button {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  .summary-grid,
+  .shopping-list-grid,
+  .family-cards,
+  .expenses-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .summary-card {
+    min-height: 180px;
+    padding: 18px;
+  }
+
+  .summary-card h3 {
+    font-size: 21px;
+  }
+
+  .today-section {
+    margin-top: 26px;
+  }
+
+  .event-item {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .event-time {
+    width: auto;
+    min-width: 48px;
+  }
+
+  .family-management-header,
+  .calendar-management-header,
+  .tasks-management-header,
+  .shopping-management-header,
+  .expenses-management-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .family-management-header .add-member-button,
+  .calendar-management-header .add-member-button,
+  .tasks-management-header .add-member-button,
+  .shopping-management-header .add-member-button,
+  .expenses-management-header .add-member-button {
+    width: 100%;
+  }
+
+  .family-card {
+    padding: 15px;
+    gap: 12px;
+  }
+
+  .calendar-event-card {
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .calendar-event-date {
+    width: 58px;
+    min-width: 58px;
+    height: 60px;
+  }
+
+  .calendar-event-top,
+  .calendar-event-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .calendar-event-meta {
+    justify-content: flex-start;
+  }
+
+  .calendar-assignees-row {
+    gap: 8px;
+  }
+
+  .task-family-card {
+    padding: 15px;
+  }
+
+  .task-family-top {
+    flex-direction: column;
+  }
+
+  .task-family-details {
+    gap: 10px;
+  }
+
+  .task-family-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .task-family-actions button {
+    width: 100%;
+  }
+
+  .shopping-list-card {
+    padding: 14px;
+  }
+
+  .shopping-list-card-top {
+    align-items: flex-start;
+  }
+
+  .shopping-list-card-top h3 {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .shopping-detail-modal,
+  .calendar-event-modal,
+  .task-modal,
+  .shopping-list-modal,
+  .expense-modal,
+  .member-modal {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    padding: 18px;
+    border-radius: 18px;
+    overflow-y: auto;
+  }
+
+  .member-modal-overlay {
+    padding: 10px;
+    align-items: center;
+  }
+
+  .member-modal-header {
+    margin-bottom: 18px;
+    gap: 12px;
+  }
+
+  .member-modal-header h2 {
+    font-size: 21px;
+  }
+
+  .member-modal-close {
+    flex: 0 0 36px;
+  }
+
+  .member-modal-actions,
+  .calendar-modal-actions,
+  .task-modal-actions,
+  .delete-confirm-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .member-modal-actions button,
+  .calendar-modal-actions button,
+  .task-modal-actions button,
+  .delete-confirm-actions button {
+    width: 100%;
+  }
+
+  .calendar-form-grid,
+  .expense-form-grid,
+  .calendar-member-selector {
+    grid-template-columns: 1fr !important;
+  }
+
+  .shopping-add-product-fields {
+    grid-template-columns: 1fr !important;
+  }
+
+  .shopping-detail-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shopping-finish-button {
+    width: 100%;
+  }
+
+  .expense-row {
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .expense-title-row {
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .expense-title-row h3,
+  .expense-title-row strong {
+    overflow-wrap: anywhere;
+  }
+
+  .expense-row-actions {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .expenses-month-group summary {
+    gap: 8px;
+  }
+
+  .floating-button {
+    width: 54px;
+    height: 54px;
+    right: 16px;
+    bottom: 96px;
+  }
+
+  .mobile-bottom-nav {
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: calc(100% - 12px);
+    min-height: 64px;
+    padding: 5px 4px;
+    border-radius: 18px;
+  }
+
+  .mobile-bottom-nav button {
+    min-height: 50px;
+    border-radius: 12px;
+  }
+
+  .mobile-bottom-nav button span {
+    font-size: 17px;
+  }
+
+  .mobile-bottom-nav button small {
+    font-size: 9px;
+  }
+}
+
+/* Celulares muy angostos */
+@media (max-width: 390px) {
+  .main-content {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .mobile-bottom-nav button small {
+    font-size: 8px;
+  }
+
+  .mobile-bottom-nav button span {
+    font-size: 16px;
+  }
+
+  .topbar h2,
+  .section-main-title {
+    font-size: 20px;
+  }
+
+  .summary-card {
+    padding: 16px;
+  }
+}
+
+
+/* =========================
+   FAMILIA - CÓDIGO DE INVITACIÓN
+========================= */
+
+.family-invite-card {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid rgba(103, 84, 231, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(40, 45, 70, 0.06);
+}
+
+.family-invite-icon {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: #f1efff;
+  font-size: 23px;
+}
+
+.family-invite-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.family-invite-content h3 {
+  margin: 0 0 6px;
+  font-size: 19px;
+}
+
+.family-invite-content > p:not(.eyebrow) {
+  margin: 0;
+  color: #727a8c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.family-invite-code-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.family-invite-code {
+  min-width: 150px;
+  padding: 11px 15px;
+  border: 1px dashed #b9b0ff;
+  border-radius: 12px;
+  background: #f8f7ff;
+  color: #5747dc;
+  font-size: 20px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  user-select: all;
+}
+
+.family-copy-code-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #d9d4ff;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #6754e7;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.family-copy-code-button:hover {
+  background: #f7f5ff;
+}
+
+@media (max-width: 640px) {
+  .family-invite-card {
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .family-invite-code-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .family-invite-code,
+  .family-copy-code-button {
+    width: 100%;
+  }
+
+  .family-invite-code {
+    min-width: 0;
+  }
+}

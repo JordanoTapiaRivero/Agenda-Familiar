@@ -8,6 +8,8 @@ function FamilySetup({ usuario, onFamiliaCreada }) {
   const [codigo, setCodigo] = useState('')
   const [mensaje, setMensaje] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [familiaCreada, setFamiliaCreada] = useState(null)
+  const [codigoCopiado, setCodigoCopiado] = useState(false)
 
   const generarCodigo = () => {
     return Math.random()
@@ -68,7 +70,8 @@ function FamilySetup({ usuario, onFamiliaCreada }) {
         throw errorMiembro
       }
 
-      onFamiliaCreada(familia)
+      setFamiliaCreada(familia)
+      setModo('creada')
     } catch (error) {
       console.error(
         'Error al crear familia:',
@@ -81,6 +84,36 @@ function FamilySetup({ usuario, onFamiliaCreada }) {
     } finally {
       setCargando(false)
     }
+  }
+
+  const copiarCodigo = async () => {
+    if (!familiaCreada?.codigo_invitacion) return
+
+    try {
+      await navigator.clipboard.writeText(
+        familiaCreada.codigo_invitacion
+      )
+
+      setCodigoCopiado(true)
+
+      window.setTimeout(() => {
+        setCodigoCopiado(false)
+      }, 2000)
+    } catch (error) {
+      console.error(
+        'No se pudo copiar el código:',
+        error
+      )
+
+      setMensaje(
+        'No pudimos copiar el código automáticamente.'
+      )
+    }
+  }
+
+  const continuar = () => {
+    if (!familiaCreada) return
+    onFamiliaCreada(familiaCreada)
   }
 
   const unirseFamilia = async (e) => {
@@ -170,6 +203,8 @@ function FamilySetup({ usuario, onFamiliaCreada }) {
     setMensaje('')
     setCodigo('')
     setNombreFamilia('')
+    setFamiliaCreada(null)
+    setCodigoCopiado(false)
   }
 
   return (
@@ -302,6 +337,54 @@ function FamilySetup({ usuario, onFamiliaCreada }) {
               </button>
             </form>
           </>
+        )}
+
+        {modo === 'creada' && familiaCreada && (
+          <div className="setup-success">
+            <div className="setup-success-icon">
+              🎉
+            </div>
+
+            <h1>
+              ¡Familia creada!
+            </h1>
+
+            <p className="setup-description">
+              Comparte este código con tu pareja o familiares para que puedan unirse a <strong>{familiaCreada.nombre}</strong>.
+            </p>
+
+            <div className="setup-invite-code">
+              {familiaCreada.codigo_invitacion}
+            </div>
+
+            <button
+              type="button"
+              className="setup-copy-button"
+              onClick={copiarCodigo}
+            >
+              {codigoCopiado
+                ? '✓ Código copiado'
+                : '📋 Copiar código'}
+            </button>
+
+            {mensaje && (
+              <div className="setup-message">
+                {mensaje}
+              </div>
+            )}
+
+            <p className="setup-code-help">
+              No te preocupes: este código también quedará disponible dentro de la sección Familia.
+            </p>
+
+            <button
+              type="button"
+              className="setup-primary"
+              onClick={continuar}
+            >
+              Continuar a Agenda Familiar
+            </button>
+          </div>
         )}
 
         {modo === 'unirse' && (

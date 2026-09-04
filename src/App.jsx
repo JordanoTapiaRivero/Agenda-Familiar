@@ -5,6 +5,16 @@ import FamilySetup from './components/FamilySetup'
 import AvatarUploader from './components/AvatarUploader'
 import { supabase } from './lib/supabaseClient'
 
+const convertirBase64AUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+
+  const rawData = window.atob(base64)
+  return Uint8Array.from([...rawData].map((caracter) => caracter.charCodeAt(0)))
+}
+
 function App() {
   const obtenerFechaLocalHoy = () => {
     const hoy = new Date()
@@ -126,6 +136,10 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [gastoEditando, setGastoEditando] = useState(null)
   const [gastoAEliminar, setGastoAEliminar] = useState(null)
   const [eliminandoGasto, setEliminandoGasto] = useState(false)
+  const [notificacionesActivas, setNotificacionesActivas] = useState(false)
+  const [activandoNotificaciones, setActivandoNotificaciones] = useState(false)
+  const [mensajeNotificaciones, setMensajeNotificaciones] = useState('')
+  const [codigoInvitacionCopiado, setCodigoInvitacionCopiado] = useState(false)
 
   useEffect(() => {
     const cargarSesion = async () => {
@@ -147,6 +161,36 @@ const [mensajeEdicion, setMensajeEdicion] =
       subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    const revisarNotificaciones = async () => {
+      if (!usuario) {
+        setNotificacionesActivas(false)
+        return
+      }
+
+      if (
+        !('serviceWorker' in navigator) ||
+        !('PushManager' in window) ||
+        !('Notification' in window)
+      ) {
+        return
+      }
+
+      try {
+        const registro = await navigator.serviceWorker.register('/sw.js')
+        const suscripcion = await registro.pushManager.getSubscription()
+
+        setNotificacionesActivas(
+          Notification.permission === 'granted' && Boolean(suscripcion)
+        )
+      } catch (error) {
+        console.error('Error al revisar notificaciones:', error)
+      }
+    }
+
+    revisarNotificaciones()
+  }, [usuario])
 
   useEffect(() => {
     const cargarFamilia = async () => {
@@ -491,6 +535,27 @@ const [mensajeEdicion, setMensajeEdicion] =
     cargarCompras()
   }, [familia?.id])
 
+  const copiarCodigoInvitacion = async () => {
+    if (!familia?.codigo_invitacion) return
+
+    try {
+      await navigator.clipboard.writeText(
+        familia.codigo_invitacion
+      )
+
+      setCodigoInvitacionCopiado(true)
+
+      window.setTimeout(() => {
+        setCodigoInvitacionCopiado(false)
+      }, 2000)
+    } catch (error) {
+      console.error(
+        'No se pudo copiar el código de invitación:',
+        error
+      )
+    }
+  }
+
   const manejarFamiliaCreada = async (familiaCreada) => {
     setFamilia(familiaCreada)
 
@@ -786,6 +851,50 @@ const eliminarIntegrante = async () => {
     setAsignadosEvento(miembros.map((miembro) => miembro.id))
   }
 
+  const enviarNotificacionFamiliar = async ({
+    titulo,
+    mensaje,
+    url = '/'
+  }) => {
+    try {
+      const { error } = await supabase.functions.invoke(
+        'enviar-notificacion-familiar',
+        {
+          body: {
+            familia_id: familia.id,
+            titulo,
+            mensaje,
+            url
+          }
+        }
+      )
+
+      if (error) {
+        console.error(
+          'La acción se guardó, pero no se pudo enviar la notificación:',
+          error
+        )
+      }
+    } catch (error) {
+      console.error(
+        'La acción se guardó, pero ocurrió un error con la notificación:',
+        error
+      )
+    }
+  }
+
+  const obtenerNombreCreadorNotificacion = () => {
+    const creador = miembros.find(
+      (miembro) => miembro.user_id === usuario?.id
+    )
+
+    return (
+      creador?.nombre ||
+      usuario?.user_metadata?.nombre ||
+      'Un integrante'
+    )
+  }
+
   const crearEvento = async (e) => {
     e.preventDefault()
     setMensajeEvento('')
@@ -881,6 +990,12 @@ const eliminarIntegrante = async () => {
             new Date(a.fecha_inicio) - new Date(b.fecha_inicio)
         )
       )
+
+      await enviarNotificacionFamiliar({
+        titulo: 'Nuevo evento 📅',
+        mensaje: `${obtenerNombreCreadorNotificacion()} creó un nuevo evento: ${tituloLimpio}`,
+        url: '/?seccion=calendario'
+      })
 
       cerrarModalEvento()
     } catch (error) {
@@ -1377,6 +1492,12 @@ const eliminarIntegrante = async () => {
         ...actuales
       ])
 
+      await enviarNotificacionFamiliar({
+        titulo: 'Nueva tarea ✅',
+        mensaje: `${obtenerNombreCreadorNotificacion()} creó una nueva tarea: ${nombreLimpio}`,
+        url: '/?seccion=tareas'
+      })
+
       cerrarModalTarea()
     } catch (error) {
       console.error('Error al crear tarea:', error)
@@ -1562,6 +1683,12 @@ const eliminarIntegrante = async () => {
         },
         ...actuales
       ])
+
+      await enviarNotificacionFamiliar({
+        titulo: 'Nueva lista de compras 🛒',
+        mensaje: `${obtenerNombreCreadorNotificacion()} creó una nueva lista: ${nombreLimpio}`,
+        url: '/?seccion=compras'
+      })
 
       cerrarModalListaCompra()
     } catch (error) {
@@ -2078,6 +2205,12 @@ const eliminarIntegrante = async () => {
             return b.fecha.localeCompare(a.fecha)
           })
         )
+
+        await enviarNotificacionFamiliar({
+          titulo: 'Nuevo gasto 💰',
+          mensaje: `${obtenerNombreCreadorNotificacion()} registró un gasto: ${conceptoLimpio} por ${formatearMontoCLP(montoNumero)}`,
+          url: '/?seccion=gastos'
+        })
       }
 
       cerrarModalGasto()
@@ -2134,6 +2267,85 @@ const eliminarIntegrante = async () => {
       console.error('Error al eliminar gasto:', error)
     } finally {
       setEliminandoGasto(false)
+    }
+  }
+
+  const activarNotificaciones = async () => {
+    setMensajeNotificaciones('')
+
+    if (
+      !('serviceWorker' in navigator) ||
+      !('PushManager' in window) ||
+      !('Notification' in window)
+    ) {
+      setMensajeNotificaciones(
+        'Este navegador no admite notificaciones Push.'
+      )
+      return
+    }
+
+    const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
+
+    if (!vapidPublicKey) {
+      setMensajeNotificaciones(
+        'Falta configurar VITE_VAPID_PUBLIC_KEY.'
+      )
+      return
+    }
+
+    try {
+      setActivandoNotificaciones(true)
+
+      const permiso = await Notification.requestPermission()
+
+      if (permiso !== 'granted') {
+        setMensajeNotificaciones(
+          'Debes permitir las notificaciones en el navegador.'
+        )
+        return
+      }
+
+      const registro = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+
+      let suscripcion = await registro.pushManager.getSubscription()
+
+      if (!suscripcion) {
+        suscripcion = await registro.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertirBase64AUint8Array(vapidPublicKey)
+        })
+      }
+
+      const datos = suscripcion.toJSON()
+
+      const { error } = await supabase
+        .from('push_suscripciones')
+        .upsert(
+          {
+            user_id: usuario.id,
+            endpoint: datos.endpoint,
+            p256dh: datos.keys?.p256dh,
+            auth: datos.keys?.auth
+          },
+          {
+            onConflict: 'endpoint'
+          }
+        )
+
+      if (error) {
+        throw error
+      }
+
+      setNotificacionesActivas(true)
+      setMensajeNotificaciones('Notificaciones activadas correctamente.')
+    } catch (error) {
+      console.error('Error al activar notificaciones:', error)
+      setMensajeNotificaciones(
+        'No se pudieron activar las notificaciones.'
+      )
+    } finally {
+      setActivandoNotificaciones(false)
     }
   }
 
@@ -2282,9 +2494,42 @@ const eliminarIntegrante = async () => {
           </div>
 
           <div className="topbar-actions">
-            <button className="notification-button">
-              🔔
+            <button
+              type="button"
+              className={`notification-button ${
+                notificacionesActivas ? 'active' : ''
+              }`}
+              onClick={activarNotificaciones}
+              disabled={activandoNotificaciones || notificacionesActivas}
+              title={
+                notificacionesActivas
+                  ? 'Notificaciones activadas'
+                  : 'Activar notificaciones'
+              }
+              aria-label={
+                notificacionesActivas
+                  ? 'Notificaciones activadas'
+                  : 'Activar notificaciones'
+              }
+            >
+              {activandoNotificaciones ? '…' : '🔔'}
             </button>
+
+            <button
+              type="button"
+              className="mobile-logout-button"
+              onClick={() => setMostrarConfirmacionSalir(true)}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              ↪
+            </button>
+
+            {mensajeNotificaciones && (
+              <div className="notification-status-message">
+                {mensajeNotificaciones}
+              </div>
+            )}
           </div>
         </header>
 
@@ -2750,15 +2995,8 @@ const eliminarIntegrante = async () => {
                 <h3>Aún no hay tareas</h3>
 
                 <p>
-                  Crea la primera tarea para comenzar a organizar los pendientes.
+                  Usa el botón + Nueva tarea para crear la primera y comenzar a organizar los pendientes.
                 </p>
-
-                <button
-                  className="member-save-button"
-                  onClick={abrirNuevaTarea}
-                >
-                  Crear primera tarea
-                </button>
               </div>
             ) : (
               <div className="task-list">
@@ -2919,15 +3157,8 @@ const eliminarIntegrante = async () => {
                     <div className="calendar-empty-icon">🛒</div>
                     <h3>Aún no hay listas de compras</h3>
                     <p>
-                      Crea una lista para comenzar a agregar productos.
+                      Usa el botón + Nueva lista para crear la primera y comenzar a agregar productos.
                     </p>
-
-                    <button
-                      className="member-save-button"
-                      onClick={abrirNuevaListaCompra}
-                    >
-                      Crear primera lista
-                    </button>
                   </div>
                 ) : (
                   <div className="shopping-list-grid">
@@ -3436,6 +3667,40 @@ const eliminarIntegrante = async () => {
               </button>
             </div>
 
+            <div className="family-invite-card">
+              <div className="family-invite-icon">
+                🔗
+              </div>
+
+              <div className="family-invite-content">
+                <p className="eyebrow">
+                  CÓDIGO DE INVITACIÓN
+                </p>
+
+                <h3>Invita a tu familia</h3>
+
+                <p>
+                  Comparte este código con tu pareja o familiares para que puedan unirse a {familia.nombre}.
+                </p>
+
+                <div className="family-invite-code-row">
+                  <strong className="family-invite-code">
+                    {familia.codigo_invitacion}
+                  </strong>
+
+                  <button
+                    type="button"
+                    className="family-copy-code-button"
+                    onClick={copiarCodigoInvitacion}
+                  >
+                    {codigoInvitacionCopiado
+                      ? '✓ Copiado'
+                      : 'Copiar código'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="family-cards">
               {miembros.map((miembro) => (
                 <article
@@ -3515,6 +3780,62 @@ const eliminarIntegrante = async () => {
           </section>
         )}
       </main>
+
+      <nav className="mobile-bottom-nav" aria-label="Navegación principal">
+        <button
+          type="button"
+          className={seccion === 'inicio' ? 'active' : ''}
+          onClick={() => setSeccion('inicio')}
+        >
+          <span>🏠</span>
+          <small>Inicio</small>
+        </button>
+
+        <button
+          type="button"
+          className={seccion === 'calendario' ? 'active' : ''}
+          onClick={() => setSeccion('calendario')}
+        >
+          <span>📅</span>
+          <small>Calendario</small>
+        </button>
+
+        <button
+          type="button"
+          className={seccion === 'tareas' ? 'active' : ''}
+          onClick={() => setSeccion('tareas')}
+        >
+          <span>✅</span>
+          <small>Tareas</small>
+        </button>
+
+        <button
+          type="button"
+          className={seccion === 'compras' ? 'active' : ''}
+          onClick={() => setSeccion('compras')}
+        >
+          <span>🛒</span>
+          <small>Compras</small>
+        </button>
+
+        <button
+          type="button"
+          className={seccion === 'gastos' ? 'active' : ''}
+          onClick={() => setSeccion('gastos')}
+        >
+          <span>💰</span>
+          <small>Gastos</small>
+        </button>
+
+        <button
+          type="button"
+          className={seccion === 'familia' ? 'active' : ''}
+          onClick={() => setSeccion('familia')}
+        >
+          <span>👨‍👩‍👧‍👦</span>
+          <small>Familia</small>
+        </button>
+      </nav>
 
       {mostrarModalEvento && (
         <div
@@ -4286,18 +4607,25 @@ const eliminarIntegrante = async () => {
               </div>
 
               <div className="calendar-form-grid">
-                <div className="member-form-field">
+                <div
+                  className="member-form-field notranslate"
+                  translate="no"
+                  lang="es"
+                >
                   <label>Prioridad</label>
 
                   <select
+                    className="notranslate"
+                    translate="no"
+                    lang="es"
                     value={prioridadTarea}
                     onChange={(e) =>
                       setPrioridadTarea(e.target.value)
                     }
                   >
-                    <option value="baja">Baja</option>
-                    <option value="media">Media</option>
-                    <option value="alta">Alta</option>
+                    <option value="baja" translate="no">Baja</option>
+                    <option value="media" translate="no">Media</option>
+                    <option value="alta" translate="no">Alta</option>
                   </select>
                 </div>
 
@@ -4476,25 +4804,26 @@ const eliminarIntegrante = async () => {
 
       {mostrarConfirmacionEliminarTarea && tareaEditando && (
         <div
-          className="event-delete-confirm-overlay"
+          className="member-modal-overlay event-delete-confirm-overlay"
           onClick={() =>
             !eliminandoTarea &&
             setMostrarConfirmacionEliminarTarea(false)
           }
         >
           <div
-            className="event-delete-confirm"
+            className="member-modal delete-confirm-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="event-delete-confirm-icon">🗑️</div>
+            <div className="delete-confirm-icon">🗑️</div>
 
-            <h3>¿Eliminar “{tareaEditando.nombre}”?</h3>
+            <h2>¿Eliminar “{tareaEditando.nombre}”?</h2>
 
-            <p>
+            <p className="delete-confirm-text">
               Esta tarea se eliminará definitivamente para toda la familia.
+              Esta acción no se puede deshacer.
             </p>
 
-            <div className="event-delete-confirm-actions">
+            <div className="delete-confirm-actions">
               <button
                 type="button"
                 className="member-cancel-button"
@@ -4508,7 +4837,7 @@ const eliminarIntegrante = async () => {
 
               <button
                 type="button"
-                className="task-delete-confirm-button"
+                className="member-delete-confirm-button"
                 onClick={eliminarTareaManual}
                 disabled={eliminandoTarea}
               >
