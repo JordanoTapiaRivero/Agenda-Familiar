@@ -2520,11 +2520,26 @@ const eliminarIntegrante = async () => {
 
       const datos = suscripcion.toJSON()
 
+      const { error: errorLimpiarSuscripciones } = await supabase
+        .from('push_suscripciones')
+        .delete()
+        .eq('user_id', usuario.id)
+        .eq('dispositivo_id', dispositivoId)
+        .neq('endpoint', datos.endpoint)
+
+      if (errorLimpiarSuscripciones) {
+        console.error(
+          'No se pudieron limpiar suscripciones antiguas del dispositivo:',
+          errorLimpiarSuscripciones
+        )
+      }
+
       const { error } = await supabase
         .from('push_suscripciones')
         .upsert(
           {
             user_id: usuario.id,
+            dispositivo_id: dispositivoId,
             endpoint: datos.endpoint,
             p256dh: datos.keys?.p256dh,
             auth: datos.keys?.auth
