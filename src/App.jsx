@@ -242,7 +242,7 @@ const [mensajeEdicion, setMensajeEdicion] =
 
   useEffect(() => {
     const revisarNotificaciones = async () => {
-      if (!usuario) {
+      if (!usuario?.id || !dispositivoId) {
         setNotificacionesActivas(false)
         return
       }
@@ -257,18 +257,84 @@ const [mensajeEdicion, setMensajeEdicion] =
 
       try {
         const registro = await navigator.serviceWorker.register('/sw.js')
+        await navigator.serviceWorker.ready
+
         const suscripcion = await registro.pushManager.getSubscription()
 
-        setNotificacionesActivas(
+        const pushActiva =
           Notification.permission === 'granted' && Boolean(suscripcion)
-        )
+
+        setNotificacionesActivas(pushActiva)
+
+        // Si este navegador ya tenía Push autorizado, sincronizamos
+        // automáticamente esa suscripción con el dispositivo actual.
+        // Así no es necesario volver a pulsar la campana después de iniciar sesión.
+        if (pushActiva && suscripcion) {
+          const datos = suscripcion.toJSON()
+
+          const { error: errorLimpiarSuscripciones } = await supabase
+            .from('push_suscripciones')
+            .delete()
+            .eq('user_id', usuario.id)
+            .eq('dispositivo_id', dispositivoId)
+            .neq('endpoint', datos.endpoint)
+
+          if (errorLimpiarSuscripciones) {
+            console.error(
+              'No se pudieron limpiar suscripciones antiguas del dispositivo:',
+              errorLimpiarSuscripciones
+            )
+          }
+
+          const { error: errorPush } = await supabase
+            .from('push_suscripciones')
+            .upsert(
+              {
+                user_id: usuario.id,
+                dispositivo_id: dispositivoId,
+                endpoint: datos.endpoint,
+                p256dh: datos.keys?.p256dh,
+                auth: datos.keys?.auth
+              },
+              {
+                onConflict: 'endpoint'
+              }
+            )
+
+          if (errorPush) {
+            throw errorPush
+          }
+
+          const { error: errorSesion } = await supabase
+            .from('sesiones_dispositivo')
+            .upsert(
+              {
+                user_id: usuario.id,
+                dispositivo_id: dispositivoId,
+                endpoint_push: datos.endpoint,
+                ultima_actividad: new Date().toISOString(),
+                estado: 'activa',
+                notificado_cierre: false
+              },
+              {
+                onConflict: 'user_id,dispositivo_id'
+              }
+            )
+
+          if (errorSesion) {
+            throw errorSesion
+          }
+        }
       } catch (error) {
-        console.error('Error al revisar notificaciones:', error)
+        console.error(
+          'Error al revisar/sincronizar notificaciones:',
+          error
+        )
       }
     }
 
     revisarNotificaciones()
-  }, [usuario])
+  }, [usuario?.id, dispositivoId])
 
   useEffect(() => {
     if (!usuario?.id || !dispositivoId) return
