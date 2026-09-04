@@ -51,6 +51,7 @@ function App() {
   const [miembros, setMiembros] = useState([])
   const [seccion, setSeccion] = useState('inicio')
   const [cargandoFamilia, setCargandoFamilia] = useState(false)
+  const [familiaVerificada, setFamiliaVerificada] = useState(false)
 
   const [mostrarModalIntegrante, setMostrarModalIntegrante] =
     useState(false)
@@ -447,9 +448,11 @@ const [mensajeEdicion, setMensajeEdicion] =
       if (!usuario) {
         setFamilia(null)
         setMiembros([])
+        setFamiliaVerificada(false)
         return
       }
 
+      setFamiliaVerificada(false)
       setCargandoFamilia(true)
 
       const { data, error } = await supabase
@@ -470,6 +473,7 @@ const [mensajeEdicion, setMensajeEdicion] =
         setFamilia(null)
         setMiembros([])
         setCargandoFamilia(false)
+        setFamiliaVerificada(true)
         return
       }
 
@@ -508,6 +512,7 @@ const [mensajeEdicion, setMensajeEdicion] =
       }
 
       setCargandoFamilia(false)
+      setFamiliaVerificada(true)
     }
 
     cargarFamilia()
@@ -2798,7 +2803,7 @@ const eliminarIntegrante = async () => {
     )
   }
 
-  if (cargandoFamilia) {
+  if (cargandoFamilia || !familiaVerificada) {
     return (
       <div className="loading-screen">
         <p>Cargando tu familia...</p>
