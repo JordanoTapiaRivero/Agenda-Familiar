@@ -158,6 +158,7 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [mensajeNotificaciones, setMensajeNotificaciones] = useState('')
   const [codigoInvitacionCopiado, setCodigoInvitacionCopiado] = useState(false)
   const [dispositivoId] = useState(() => obtenerDispositivoId())
+  const [loginReciente, setLoginReciente] = useState(false)
 
   useEffect(() => {
     if (!mensajeNotificaciones) return
@@ -173,24 +174,71 @@ const [mensajeEdicion, setMensajeEdicion] =
 
   useEffect(() => {
     const cargarSesion = async () => {
-      const { data } = await supabase.auth.getSession()
+      try {
+        const { data } = await supabase.auth.getSession()
+        const usuarioSesion = data.session?.user ?? null
 
-      setUsuario(data.session?.user ?? null)
-      setCargandoSesion(false)
+        if (!usuarioSesion) {
+          setUsuario(null)
+          return
+        }
+
+        const { data: sesionDispositivo, error } = await supabase
+          .from('sesiones_dispositivo')
+          .select('estado')
+          .eq('user_id', usuarioSesion.id)
+          .eq('dispositivo_id', dispositivoId)
+          .maybeSingle()
+
+        if (error) {
+          console.error(
+            'No se pudo validar la sesión del dispositivo:',
+            error
+          )
+        }
+
+        if (
+          sesionDispositivo?.estado === 'expirada' ||
+          sesionDispositivo?.estado === 'cerrada_manual'
+        ) {
+          await supabase.auth.signOut({ scope: 'local' })
+          setUsuario(null)
+          return
+        }
+
+        setUsuario(usuarioSesion)
+      } catch (error) {
+        console.error('Error al cargar la sesión:', error)
+        setUsuario(null)
+      } finally {
+        setCargandoSesion(false)
+      }
     }
 
     cargarSesion()
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_evento, session) => {
+    } = supabase.auth.onAuthStateChange((evento, session) => {
+      if (evento === 'INITIAL_SESSION') {
+        return
+      }
+
+      if (evento === 'SIGNED_IN') {
+        setLoginReciente(true)
+      }
+
+      if (evento === 'SIGNED_OUT') {
+        setLoginReciente(false)
+      }
+
       setUsuario(session?.user ?? null)
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [dispositivoId])
 
   useEffect(() => {
     const revisarNotificaciones = async () => {
@@ -227,9 +275,53 @@ const [mensajeEdicion, setMensajeEdicion] =
 
     let intervaloActividad = null
     let desmontado = false
+    let cerrandoPorInactividad = false
+
+    const cerrarSesionLocalPorInactividad = async () => {
+      if (cerrandoPorInactividad) return
+
+      cerrandoPorInactividad = true
+
+      try {
+        // Cierra solamente la sesión de este navegador/dispositivo.
+        // No elimina push_suscripciones, por lo que los Push familiares
+        // siguen llegando aunque la app quede en Login.
+        await supabase.auth.signOut({ scope: 'local' })
+      } catch (error) {
+        console.error(
+          'Error al cerrar la sesión local por inactividad:',
+          error
+        )
+      } finally {
+        setLoginReciente(false)
+        setUsuario(null)
+      }
+    }
 
     const registrarActividadDispositivo = async () => {
       try {
+        const { data: sesionActual, error: errorSesionActual } =
+          await supabase
+            .from('sesiones_dispositivo')
+            .select('estado')
+            .eq('user_id', usuario.id)
+            .eq('dispositivo_id', dispositivoId)
+            .maybeSingle()
+
+        if (errorSesionActual) {
+          throw errorSesionActual
+        }
+
+        if (
+          sesionActual?.estado === 'expirada' ||
+          sesionActual?.estado === 'cerrada_manual'
+        ) {
+          if (!loginReciente) {
+            await cerrarSesionLocalPorInactividad()
+            return
+          }
+        }
+
         let endpointPush = null
 
         if (
@@ -241,7 +333,7 @@ const [mensajeEdicion, setMensajeEdicion] =
           endpointPush = suscripcion?.endpoint ?? null
         }
 
-        if (desmontado) return
+        if (desmontado || cerrandoPorInactividad) return
 
         const { error } = await supabase
           .from('sesiones_dispositivo')
@@ -260,10 +352,11 @@ const [mensajeEdicion, setMensajeEdicion] =
           )
 
         if (error) {
-          console.error(
-            'Error al registrar actividad del dispositivo:',
-            error
-          )
+          throw error
+        }
+
+        if (loginReciente) {
+          setLoginReciente(false)
         }
       } catch (error) {
         console.error(
@@ -298,7 +391,7 @@ const [mensajeEdicion, setMensajeEdicion] =
       window.removeEventListener('focus', registrarActividadDispositivo)
       document.removeEventListener('visibilitychange', registrarSiVisible)
     }
-  }, [usuario?.id, dispositivoId])
+  }, [usuario?.id, dispositivoId, loginReciente])
 
   useEffect(() => {
     const cargarFamilia = async () => {
@@ -2503,7 +2596,7 @@ const eliminarIntegrante = async () => {
         }
       }
     } finally {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
     }
   }
 
@@ -2516,7 +2609,14 @@ const eliminarIntegrante = async () => {
   }
 
   if (!usuario) {
-    return <Login onLogin={setUsuario} />
+    return (
+      <Login
+        onLogin={(usuarioLogin) => {
+          setLoginReciente(true)
+          setUsuario(usuarioLogin)
+        }}
+      />
+    )
   }
 
   if (cargandoFamilia) {
