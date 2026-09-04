@@ -274,34 +274,15 @@ const [mensajeEdicion, setMensajeEdicion] =
         if (pushActiva && suscripcion) {
           const datos = suscripcion.toJSON()
 
-          const { error: errorLimpiarSuscripciones } = await supabase
-            .from('push_suscripciones')
-            .delete()
-            .eq('user_id', usuario.id)
-            .eq('dispositivo_id', dispositivoId)
-            .neq('endpoint', datos.endpoint)
-
-          if (errorLimpiarSuscripciones) {
-            console.error(
-              'No se pudieron limpiar suscripciones antiguas del dispositivo:',
-              errorLimpiarSuscripciones
-            )
-          }
-
-          const { error: errorPush } = await supabase
-            .from('push_suscripciones')
-            .upsert(
-              {
-                user_id: usuario.id,
-                dispositivo_id: dispositivoId,
-                endpoint: datos.endpoint,
-                p256dh: datos.keys?.p256dh,
-                auth: datos.keys?.auth
-              },
-              {
-                onConflict: 'endpoint'
-              }
-            )
+          const { error: errorPush } = await supabase.rpc(
+            'reclamar_suscripcion_push',
+            {
+              p_dispositivo_id: dispositivoId,
+              p_endpoint: datos.endpoint,
+              p_p256dh: datos.keys?.p256dh,
+              p_auth: datos.keys?.auth
+            }
+          )
 
           if (errorPush) {
             throw errorPush
@@ -2722,34 +2703,15 @@ const eliminarIntegrante = async () => {
 
       const datos = suscripcion.toJSON()
 
-      const { error: errorLimpiarSuscripciones } = await supabase
-        .from('push_suscripciones')
-        .delete()
-        .eq('user_id', usuario.id)
-        .eq('dispositivo_id', dispositivoId)
-        .neq('endpoint', datos.endpoint)
-
-      if (errorLimpiarSuscripciones) {
-        console.error(
-          'No se pudieron limpiar suscripciones antiguas del dispositivo:',
-          errorLimpiarSuscripciones
-        )
-      }
-
-      const { error } = await supabase
-        .from('push_suscripciones')
-        .upsert(
-          {
-            user_id: usuario.id,
-            dispositivo_id: dispositivoId,
-            endpoint: datos.endpoint,
-            p256dh: datos.keys?.p256dh,
-            auth: datos.keys?.auth
-          },
-          {
-            onConflict: 'endpoint'
-          }
-        )
+      const { error } = await supabase.rpc(
+        'reclamar_suscripcion_push',
+        {
+          p_dispositivo_id: dispositivoId,
+          p_endpoint: datos.endpoint,
+          p_p256dh: datos.keys?.p256dh,
+          p_auth: datos.keys?.auth
+        }
+      )
 
       if (error) {
         throw error
