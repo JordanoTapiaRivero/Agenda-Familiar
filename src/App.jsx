@@ -163,6 +163,7 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [novedadesCalendario, setNovedadesCalendario] = useState(0)
   const [novedadesCompras, setNovedadesCompras] = useState(0)
   const [novedadesGastos, setNovedadesGastos] = useState(0)
+  const [versionSincronizacion, setVersionSincronizacion] = useState(0)
 
   useEffect(() => {
     if (!mensajeNotificaciones) return
@@ -620,7 +621,7 @@ const [mensajeEdicion, setMensajeEdicion] =
       window.removeEventListener('focus', cargarEventos)
       document.removeEventListener('visibilitychange', recargarAlVolver)
     }
-  }, [familia?.id])
+  }, [familia?.id, versionSincronizacion])
 
   useEffect(() => {
     const cargarTareas = async () => {
@@ -711,7 +712,7 @@ const [mensajeEdicion, setMensajeEdicion] =
       window.removeEventListener('focus', cargarTareas)
       document.removeEventListener('visibilitychange', recargarAlVolver)
     }
-  }, [familia?.id])
+  }, [familia?.id, versionSincronizacion])
 
   useEffect(() => {
     if (!familia?.id || !usuario?.id) return
@@ -798,6 +799,32 @@ const [mensajeEdicion, setMensajeEdicion] =
     return () => {
       window.clearTimeout(temporizadorRecarga)
       supabase.removeChannel(canalTareas)
+    }
+  }, [familia?.id, usuario?.id])
+
+  useEffect(() => {
+    if (!usuario?.id || !familia?.id) return
+
+    const canalSincronizacion = supabase
+      .channel(`sincronizacion-familia-${familia.id}-${usuario.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sincronizaciones_familiares',
+          filter: `familia_id=eq.${familia.id}`
+        },
+        (payload) => {
+          if (payload.new?.creado_por === usuario.id) return
+
+          setVersionSincronizacion((actual) => actual + 1)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(canalSincronizacion)
     }
   }, [familia?.id, usuario?.id])
 
@@ -1106,7 +1133,7 @@ const [mensajeEdicion, setMensajeEdicion] =
       window.removeEventListener('focus', cargarCompras)
       document.removeEventListener('visibilitychange', recargarAlVolver)
     }
-  }, [familia?.id])
+  }, [familia?.id, versionSincronizacion])
 
   const copiarCodigoInvitacion = async () => {
     if (!familia?.codigo_invitacion) return
