@@ -162,6 +162,13 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [notificacionesActivas, setNotificacionesActivas] = useState(false)
   const [activandoNotificaciones, setActivandoNotificaciones] = useState(false)
   const [mensajeNotificaciones, setMensajeNotificaciones] = useState('')
+  const [notificacionesCentro, setNotificacionesCentro] = useState([])
+  const [mostrarCentroNotificaciones, setMostrarCentroNotificaciones] =
+    useState(false)
+  const [cargandoCentroNotificaciones, setCargandoCentroNotificaciones] =
+    useState(false)
+  const [marcandoNotificacionesLeidas, setMarcandoNotificacionesLeidas] =
+    useState(false)
   const [codigoInvitacionCopiado, setCodigoInvitacionCopiado] = useState(false)
   const [dispositivoId] = useState(() => obtenerDispositivoId())
   const [loginReciente, setLoginReciente] = useState(false)
@@ -182,6 +189,228 @@ const [mensajeEdicion, setMensajeEdicion] =
       window.clearTimeout(temporizador)
     }
   }, [mensajeNotificaciones])
+
+  const cargarCentroNotificaciones = async () => {
+    if (!usuario?.id) {
+      setNotificacionesCentro([])
+      return
+    }
+
+    try {
+      setCargandoCentroNotificaciones(true)
+
+      const { data, error } = await supabase
+        .from('notificaciones_familiares')
+        .select(`
+          id,
+          familia_id,
+          usuario_id,
+          creado_por,
+          tipo,
+          titulo,
+          mensaje,
+          leida,
+          url,
+          created_at
+        `)
+        .eq('usuario_id', usuario.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (error) {
+        throw error
+      }
+
+      setNotificacionesCentro(data ?? [])
+    } catch (error) {
+      console.error(
+        'Error al cargar el centro de notificaciones:',
+        error
+      )
+    } finally {
+      setCargandoCentroNotificaciones(false)
+    }
+  }
+
+  const cantidadNotificacionesNoLeidas = notificacionesCentro.filter(
+    (notificacion) => !notificacion.leida
+  ).length
+
+  const formatearTiempoNotificacion = (fecha) => {
+    if (!fecha) return ''
+
+    const ahora = new Date()
+    const creada = new Date(fecha)
+    const diferenciaSegundos = Math.max(
+      0,
+      Math.floor((ahora - creada) / 1000)
+    )
+
+    if (diferenciaSegundos < 60) {
+      return 'Ahora'
+    }
+
+    const minutos = Math.floor(diferenciaSegundos / 60)
+
+    if (minutos < 60) {
+      return `Hace ${minutos} min`
+    }
+
+    const horas = Math.floor(minutos / 60)
+
+    if (horas < 24) {
+      return `Hace ${horas} h`
+    }
+
+    const dias = Math.floor(horas / 24)
+
+    if (dias === 1) {
+      return 'Ayer'
+    }
+
+    if (dias < 7) {
+      return `Hace ${dias} días`
+    }
+
+    return creada.toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: 'short'
+    })
+  }
+
+  const iconoNotificacionCentro = (tipo) => {
+    if (tipo === 'tarea') return '✅'
+    if (tipo === 'evento') return '📅'
+    if (tipo === 'compra') return '🛒'
+    if (tipo === 'gasto') return '💰'
+    return '🔔'
+  }
+
+  const abrirCentroNotificaciones = () => {
+    setMostrarCentroNotificaciones((actual) => !actual)
+  }
+
+  const marcarTodasNotificacionesLeidas = async () => {
+    if (!usuario?.id || cantidadNotificacionesNoLeidas === 0) return
+
+    try {
+      setMarcandoNotificacionesLeidas(true)
+
+      const { error } = await supabase
+        .from('notificaciones_familiares')
+        .update({ leida: true })
+        .eq('usuario_id', usuario.id)
+        .eq('leida', false)
+
+      if (error) {
+        throw error
+      }
+
+      setNotificacionesCentro((actuales) =>
+        actuales.map((notificacion) => ({
+          ...notificacion,
+          leida: true
+        }))
+      )
+    } catch (error) {
+      console.error(
+        'Error al marcar notificaciones como leídas:',
+        error
+      )
+    } finally {
+      setMarcandoNotificacionesLeidas(false)
+    }
+  }
+
+  const abrirNotificacionCentro = async (notificacion) => {
+    if (!notificacion) return
+
+    if (!notificacion.leida) {
+      const { error } = await supabase
+        .from('notificaciones_familiares')
+        .update({ leida: true })
+        .eq('id', notificacion.id)
+        .eq('usuario_id', usuario.id)
+
+      if (!error) {
+        setNotificacionesCentro((actuales) =>
+          actuales.map((item) =>
+            item.id === notificacion.id
+              ? { ...item, leida: true }
+              : item
+          )
+        )
+      }
+    }
+
+    const seccionDestino =
+      notificacion.url?.includes('seccion=tareas')
+        ? 'tareas'
+        : notificacion.url?.includes('seccion=calendario')
+        ? 'calendario'
+        : notificacion.url?.includes('seccion=compras')
+        ? 'compras'
+        : notificacion.url?.includes('seccion=gastos')
+        ? 'gastos'
+        : 'inicio'
+
+    setSeccion(seccionDestino)
+    setMostrarCentroNotificaciones(false)
+  }
+
+  useEffect(() => {
+    if (!usuario?.id) {
+      setNotificacionesCentro([])
+      return
+    }
+
+    cargarCentroNotificaciones()
+
+    const canalCentroNotificaciones = supabase
+      .channel(`centro-notificaciones-${usuario.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notificaciones_familiares',
+          filter: `usuario_id=eq.${usuario.id}`
+        },
+        () => {
+          cargarCentroNotificaciones()
+        }
+      )
+      .subscribe()
+
+    const recargarAlVolver = () => {
+      if (document.visibilityState === 'visible') {
+        cargarCentroNotificaciones()
+      }
+    }
+
+    window.addEventListener('focus', cargarCentroNotificaciones)
+    document.addEventListener('visibilitychange', recargarAlVolver)
+
+    return () => {
+      supabase.removeChannel(canalCentroNotificaciones)
+      window.removeEventListener('focus', cargarCentroNotificaciones)
+      document.removeEventListener('visibilitychange', recargarAlVolver)
+    }
+  }, [usuario?.id])
+
+  useEffect(() => {
+    const cerrarCentroConEscape = (event) => {
+      if (event.key === 'Escape') {
+        setMostrarCentroNotificaciones(false)
+      }
+    }
+
+    window.addEventListener('keydown', cerrarCentroConEscape)
+
+    return () => {
+      window.removeEventListener('keydown', cerrarCentroConEscape)
+    }
+  }, [])
 
   useEffect(() => {
     const cargarSesion = async () => {
@@ -3239,26 +3468,173 @@ const eliminarCuentaDeFamilia = async () => {
 
 
           <div className="topbar-actions">
-            <button
-              type="button"
-              className={`notification-button ${
-                notificacionesActivas ? 'active' : ''
-              }`}
-              onClick={activarNotificaciones}
-              disabled={activandoNotificaciones || notificacionesActivas}
-              title={
-                notificacionesActivas
-                  ? 'Notificaciones activadas'
-                  : 'Activar notificaciones'
-              }
-              aria-label={
-                notificacionesActivas
-                  ? 'Notificaciones activadas'
-                  : 'Activar notificaciones'
-              }
-            >
-              {activandoNotificaciones ? '…' : '🔔'}
-            </button>
+            <div className="notification-center-wrapper">
+              <button
+                type="button"
+                className={`notification-button ${
+                  notificacionesActivas ? 'active' : ''
+                } ${
+                  mostrarCentroNotificaciones ? 'open' : ''
+                }`}
+                onClick={abrirCentroNotificaciones}
+                title="Notificaciones"
+                aria-label={`Notificaciones${
+                  cantidadNotificacionesNoLeidas > 0
+                    ? `, ${cantidadNotificacionesNoLeidas} sin leer`
+                    : ''
+                }`}
+                aria-expanded={mostrarCentroNotificaciones}
+              >
+                🔔
+
+                {cantidadNotificacionesNoLeidas > 0 && (
+                  <span className="notification-center-badge">
+                    {cantidadNotificacionesNoLeidas > 99
+                      ? '99+'
+                      : cantidadNotificacionesNoLeidas}
+                  </span>
+                )}
+              </button>
+
+              {mostrarCentroNotificaciones && (
+                <>
+                  <button
+                    type="button"
+                    className="notification-center-backdrop"
+                    aria-label="Cerrar notificaciones"
+                    onClick={() =>
+                      setMostrarCentroNotificaciones(false)
+                    }
+                  />
+
+                  <section
+                    className="notification-center-panel"
+                    aria-label="Centro de notificaciones"
+                  >
+                    <div className="notification-center-header">
+                      <div>
+                        <p className="eyebrow">
+                          ACTIVIDAD FAMILIAR
+                        </p>
+                        <h3>Notificaciones</h3>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="notification-center-close"
+                        onClick={() =>
+                          setMostrarCentroNotificaciones(false)
+                        }
+                        aria-label="Cerrar"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div className="notification-push-status">
+                      <div>
+                        <strong>
+                          {notificacionesActivas
+                            ? 'Push activas'
+                            : 'Push desactivadas'}
+                        </strong>
+                        <span>
+                          {notificacionesActivas
+                            ? 'Este dispositivo puede recibir avisos.'
+                            : 'Activa los avisos para este dispositivo.'}
+                        </span>
+                      </div>
+
+                      {!notificacionesActivas && (
+                        <button
+                          type="button"
+                          onClick={activarNotificaciones}
+                          disabled={activandoNotificaciones}
+                        >
+                          {activandoNotificaciones
+                            ? 'Activando...'
+                            : 'Activar'}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="notification-center-toolbar">
+                      <span>
+                        {cantidadNotificacionesNoLeidas === 0
+                          ? 'Todo al día'
+                          : `${cantidadNotificacionesNoLeidas} sin leer`}
+                      </span>
+
+                      {cantidadNotificacionesNoLeidas > 0 && (
+                        <button
+                          type="button"
+                          onClick={marcarTodasNotificacionesLeidas}
+                          disabled={marcandoNotificacionesLeidas}
+                        >
+                          {marcandoNotificacionesLeidas
+                            ? 'Marcando...'
+                            : 'Marcar todas como leídas'}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="notification-center-list">
+                      {cargandoCentroNotificaciones &&
+                      notificacionesCentro.length === 0 ? (
+                        <div className="notification-center-empty">
+                          <span>🔔</span>
+                          <strong>Cargando notificaciones...</strong>
+                        </div>
+                      ) : notificacionesCentro.length === 0 ? (
+                        <div className="notification-center-empty">
+                          <span>✨</span>
+                          <strong>No tienes notificaciones</strong>
+                          <p>
+                            La actividad de tu familia aparecerá aquí.
+                          </p>
+                        </div>
+                      ) : (
+                        notificacionesCentro.map((notificacion) => (
+                          <button
+                            type="button"
+                            className={`notification-center-item ${
+                              !notificacion.leida ? 'unread' : ''
+                            }`}
+                            key={notificacion.id}
+                            onClick={() =>
+                              abrirNotificacionCentro(notificacion)
+                            }
+                          >
+                            <span className="notification-center-icon">
+                              {iconoNotificacionCentro(
+                                notificacion.tipo
+                              )}
+                            </span>
+
+                            <span className="notification-center-copy">
+                              <strong>{notificacion.titulo}</strong>
+                              <span>{notificacion.mensaje}</span>
+                              <small>
+                                {formatearTiempoNotificacion(
+                                  notificacion.created_at
+                                )}
+                              </small>
+                            </span>
+
+                            {!notificacion.leida && (
+                              <span
+                                className="notification-unread-dot"
+                                aria-label="Sin leer"
+                              />
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
 
             <button
               type="button"
