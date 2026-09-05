@@ -2257,37 +2257,45 @@ const eliminarCuentaDeFamilia = async () => {
   }
 
   const eliminarTareaManual = async () => {
-    if (!tareaEditando) return
+  if (!tareaEditando) return
 
-    try {
-      setEliminandoTarea(true)
-      setMensajeTarea('')
+  const nombreTareaEliminada = tareaEditando.nombre
 
-      const { error } = await supabase
-        .from('tareas_familiares')
-        .delete()
-        .eq('id', tareaEditando.id)
+  try {
+    setEliminandoTarea(true)
+    setMensajeTarea('')
 
-      if (error) {
-        throw error
-      }
+    const { error } = await supabase
+      .from('tareas_familiares')
+      .delete()
+      .eq('id', tareaEditando.id)
 
-      setTareas((actuales) =>
-        actuales.filter(
-          (tarea) => tarea.id !== tareaEditando.id
-        )
-      )
-
-      setMostrarConfirmacionEliminarTarea(false)
-      cerrarModalTarea()
-    } catch (error) {
-      console.error('Error al eliminar tarea:', error)
-      setMostrarConfirmacionEliminarTarea(false)
-      setMensajeTarea('No se pudo eliminar la tarea.')
-    } finally {
-      setEliminandoTarea(false)
+    if (error) {
+      throw error
     }
+
+    setTareas((actuales) =>
+      actuales.filter(
+        (tarea) => tarea.id !== tareaEditando.id
+      )
+    )
+
+    await enviarNotificacionFamiliar({
+      titulo: 'Tarea eliminada 🗑️',
+      mensaje: `${obtenerNombreCreadorNotificacion()} eliminó la tarea: ${nombreTareaEliminada}`,
+      url: '/?seccion=tareas'
+    })
+
+    setMostrarConfirmacionEliminarTarea(false)
+    cerrarModalTarea()
+  } catch (error) {
+    console.error('Error al eliminar tarea:', error)
+    setMostrarConfirmacionEliminarTarea(false)
+    setMensajeTarea('No se pudo eliminar la tarea.')
+  } finally {
+    setEliminandoTarea(false)
   }
+}
 
   const alternarAsignadoTarea = (miembroId) => {
     setAsignadosTarea((actuales) =>
