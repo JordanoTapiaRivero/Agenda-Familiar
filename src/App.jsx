@@ -87,6 +87,12 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [mostrarConfirmacionEliminar, setMostrarConfirmacionEliminar] =
     useState(false)
 
+  const [cuentaAEliminar, setCuentaAEliminar] = useState(null)
+  const [eliminandoCuentaFamilia, setEliminandoCuentaFamilia] =
+    useState(false)
+  const [mensajeEliminarCuenta, setMensajeEliminarCuenta] =
+    useState('')
+
   const [eventos, setEventos] = useState([])
   const [cargandoEventos, setCargandoEventos] = useState(false)
   const [mostrarModalEvento, setMostrarModalEvento] = useState(false)
@@ -1381,6 +1387,66 @@ const eliminarIntegrante = async () => {
     setEliminandoIntegrante(false)
   }
 }
+
+const miembroActualFamilia = miembros.find(
+  (miembro) => miembro.user_id === usuario?.id
+)
+
+const esAdministradorFamilia =
+  miembroActualFamilia?.rol === 'administrador'
+
+const solicitarEliminarCuentaFamilia = (miembro) => {
+  setMensajeEliminarCuenta('')
+  setCuentaAEliminar(miembro)
+}
+
+const cerrarEliminarCuentaFamilia = () => {
+  if (eliminandoCuentaFamilia) return
+
+  setCuentaAEliminar(null)
+  setMensajeEliminarCuenta('')
+}
+
+const eliminarCuentaDeFamilia = async () => {
+  if (!cuentaAEliminar) return
+
+  try {
+    setEliminandoCuentaFamilia(true)
+    setMensajeEliminarCuenta('')
+
+    const { error } = await supabase.rpc(
+      'eliminar_miembro_familia',
+      {
+        p_miembro_id: cuentaAEliminar.id
+      }
+    )
+
+    if (error) {
+      throw error
+    }
+
+    setMiembros((miembrosActuales) =>
+      miembrosActuales.filter(
+        (miembro) => miembro.id !== cuentaAEliminar.id
+      )
+    )
+
+    setCuentaAEliminar(null)
+  } catch (error) {
+    console.error(
+      'Error al eliminar cuenta de la familia:',
+      error
+    )
+
+    setMensajeEliminarCuenta(
+      error?.message ||
+        'No se pudo eliminar la cuenta de la familia.'
+    )
+  } finally {
+    setEliminandoCuentaFamilia(false)
+  }
+}
+
   const cerrarModalEvento = () => {
     setMostrarModalEvento(false)
     setEventoEditando(null)
@@ -4450,16 +4516,35 @@ const eliminarIntegrante = async () => {
                     </div>
                   </div>
 
-                  {miembro.tipo === 'perfil' && (
-  <button
-    className="edit-member-button"
-    onClick={() =>
-      abrirEditarIntegrante(miembro)
-    }
-  >
-    Editar
-  </button>
-)}
+                  <div className="family-card-actions">
+                    {miembro.tipo === 'perfil' && (
+                      <button
+                        className="edit-member-button"
+                        onClick={() =>
+                          abrirEditarIntegrante(miembro)
+                        }
+                      >
+                        Editar
+                      </button>
+                    )}
+
+                    {esAdministradorFamilia &&
+                      miembro.tipo === 'usuario' &&
+                      miembro.user_id !== usuario.id &&
+                      miembro.rol !== 'administrador' && (
+                        <button
+                          type="button"
+                          className="family-remove-account-button"
+                          onClick={() =>
+                            solicitarEliminarCuentaFamilia(miembro)
+                          }
+                          title={`Eliminar a ${miembro.nombre} de la familia`}
+                          aria-label={`Eliminar a ${miembro.nombre} de la familia`}
+                        >
+                          🗑️
+                        </button>
+                      )}
+                  </div>
                 </article>
               ))}
             </div>
@@ -5881,6 +5966,62 @@ const eliminarIntegrante = async () => {
                 {eliminandoEvento
                   ? 'Eliminando...'
                   : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cuentaAEliminar && (
+        <div
+          className="member-modal-overlay"
+          onClick={cerrarEliminarCuentaFamilia}
+        >
+          <div
+            className="member-modal delete-confirm-modal family-account-delete-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="delete-confirm-icon">
+              🗑️
+            </div>
+
+            <p className="eyebrow">ELIMINAR MIEMBRO</p>
+
+            <h2>
+              ¿Quitar a {cuentaAEliminar.nombre} de la familia?
+            </h2>
+
+            <p className="delete-confirm-text">
+              Este usuario perderá el acceso a {familia.nombre}.
+              Su cuenta personal seguirá existiendo, pero ya no
+              pertenecerá a esta familia.
+            </p>
+
+            {mensajeEliminarCuenta && (
+              <div className="member-form-message">
+                {mensajeEliminarCuenta}
+              </div>
+            )}
+
+            <div className="delete-confirm-actions">
+              <button
+                type="button"
+                className="member-cancel-button"
+                onClick={cerrarEliminarCuentaFamilia}
+                disabled={eliminandoCuentaFamilia}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="member-delete-confirm-button"
+                onClick={eliminarCuentaDeFamilia}
+                disabled={eliminandoCuentaFamilia}
+              >
+                {eliminandoCuentaFamilia
+                  ? 'Eliminando...'
+                  : 'Sí, eliminar de la familia'}
               </button>
             </div>
           </div>

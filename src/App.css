@@ -4541,3 +4541,74 @@ svg {
   object-fit: cover;
   border-radius: inherit;
 }
+
+
+
+/* =========================================================
+   FAMILIA — ADMINISTRAR CUENTAS
+   ========================================================= */
+
+.family-card-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.family-remove-account-button {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #f2b7bf;
+  border-radius: 13px;
+  background: #fff1f3;
+  cursor: pointer;
+  font-size: 17px;
+  box-shadow: 0 5px 14px rgba(190, 45, 64, 0.07);
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.family-remove-account-button:hover {
+  transform: translateY(-1px);
+  background: #ffe5e8;
+  border-color: #e98e99;
+}
+
+.family-account-delete-modal {
+  max-width: 470px;
+  text-align: center;
+}
+
+.family-account-delete-modal .eyebrow {
+  margin: 3px 0 8px;
+  color: #c82d40;
+}
+
+.family-account-delete-modal .member-form-message {
+  margin-top: 16px;
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  .family-card-actions {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+
+  .family-remove-account-button {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+  }
+
+  .family-account-delete-modal {
+    width: calc(100% - 28px);
+  }
+}
