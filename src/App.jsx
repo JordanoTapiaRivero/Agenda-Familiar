@@ -3149,37 +3149,45 @@ const eliminarCuentaDeFamilia = async () => {
   }
 
   const eliminarGasto = async () => {
-    if (!gastoAEliminar) return
+  if (!gastoAEliminar) return
 
-    try {
-      setEliminandoGasto(true)
+  const conceptoGastoEliminado = gastoAEliminar.concepto
 
-      const { error } = await supabase
-        .from('gastos_familiares')
-        .delete()
-        .eq('id', gastoAEliminar.id)
-        .eq('creado_por', usuario.id)
+  try {
+    setEliminandoGasto(true)
 
-      if (error) {
-        throw error
-      }
+    const { error } = await supabase
+      .from('gastos_familiares')
+      .delete()
+      .eq('id', gastoAEliminar.id)
+      .eq('creado_por', usuario.id)
 
-      setGastos((actuales) =>
-        actuales.filter((gasto) => gasto.id !== gastoAEliminar.id)
-      )
-
-      if (gastoEditando?.id === gastoAEliminar.id) {
-        setMostrarModalGasto(false)
-        setGastoEditando(null)
-      }
-
-      setGastoAEliminar(null)
-    } catch (error) {
-      console.error('Error al eliminar gasto:', error)
-    } finally {
-      setEliminandoGasto(false)
+    if (error) {
+      throw error
     }
+
+    setGastos((actuales) =>
+      actuales.filter((gasto) => gasto.id !== gastoAEliminar.id)
+    )
+
+    if (gastoEditando?.id === gastoAEliminar.id) {
+      setMostrarModalGasto(false)
+      setGastoEditando(null)
+    }
+
+    await enviarNotificacionFamiliar({
+      titulo: 'Gasto eliminado 🗑️',
+      mensaje: `${obtenerNombreCreadorNotificacion()} eliminó el gasto: ${conceptoGastoEliminado}`,
+      url: '/?seccion=gastos'
+    })
+
+    setGastoAEliminar(null)
+  } catch (error) {
+    console.error('Error al eliminar gasto:', error)
+  } finally {
+    setEliminandoGasto(false)
   }
+}
 
   const activarNotificaciones = async () => {
     setMensajeNotificaciones('')
