@@ -5,8 +5,13 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   plugins: [
     react(),
+
     VitePWA({
-      registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
+
+      injectRegister: false,
 
       includeAssets: [
         'pwa-192x192.png',
@@ -16,11 +21,11 @@ export default defineConfig({
       manifest: {
         name: 'Agenda Familiar',
         short_name: 'Agenda Familiar',
-        description: 'Organiza eventos, tareas, compras y gastos familiares.',
+        description:
+          'Organiza eventos, tareas, compras y gastos familiares.',
 
         theme_color: '#6754e7',
         background_color: '#ffffff',
-
         display: 'standalone',
 
         start_url: '/',
