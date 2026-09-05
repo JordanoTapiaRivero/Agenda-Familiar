@@ -2014,36 +2014,44 @@ const eliminarCuentaDeFamilia = async () => {
   }
 
   const eliminarEvento = async () => {
-    if (!eventoEditando) return
+  if (!eventoEditando) return
 
-    try {
-      setEliminandoEvento(true)
+  const tituloEventoEliminado = eventoEditando.titulo
 
-      const { error } = await supabase
-        .from('eventos')
-        .delete()
-        .eq('id', eventoEditando.id)
+  try {
+    setEliminandoEvento(true)
 
-      if (error) {
-        throw error
-      }
+    const { error } = await supabase
+      .from('eventos')
+      .delete()
+      .eq('id', eventoEditando.id)
 
-      setEventos((actuales) =>
-        actuales.filter(
-          (evento) => evento.id !== eventoEditando.id
-        )
-      )
-
-      setMostrarConfirmacionEliminarEvento(false)
-      cerrarModalEvento()
-    } catch (error) {
-      console.error('Error al eliminar evento:', error)
-      setMostrarConfirmacionEliminarEvento(false)
-      setMensajeEvento('No se pudo eliminar el evento.')
-    } finally {
-      setEliminandoEvento(false)
+    if (error) {
+      throw error
     }
+
+    setEventos((actuales) =>
+      actuales.filter(
+        (evento) => evento.id !== eventoEditando.id
+      )
+    )
+
+    await enviarNotificacionFamiliar({
+      titulo: 'Evento eliminado 🗑️',
+      mensaje: `${obtenerNombreCreadorNotificacion()} eliminó el evento: ${tituloEventoEliminado}`,
+      url: '/?seccion=calendario'
+    })
+
+    setMostrarConfirmacionEliminarEvento(false)
+    cerrarModalEvento()
+  } catch (error) {
+    console.error('Error al eliminar evento:', error)
+    setMostrarConfirmacionEliminarEvento(false)
+    setMensajeEvento('No se pudo eliminar el evento.')
+  } finally {
+    setEliminandoEvento(false)
   }
+}
 
   const obtenerTextoRecordatorio = (minutos) => {
     if (minutos === null || minutos === undefined) {
