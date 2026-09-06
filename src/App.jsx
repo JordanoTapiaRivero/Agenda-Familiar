@@ -3326,14 +3326,12 @@ const eliminarCuentaDeFamilia = async () => {
 
       let suscripcion = await registro.pushManager.getSubscription()
 
-      if (suscripcion) {
-      await suscripcion.unsubscribe()
+if (!suscripcion) {
+  suscripcion = await registro.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: convertirBase64AUint8Array(vapidPublicKey)
+  })
 }
-
-suscripcion = await registro.pushManager.subscribe({
-  userVisibleOnly: true,
-  applicationServerKey: convertirBase64AUint8Array(vapidPublicKey)
-})
 
       const datos = suscripcion.toJSON()
 
