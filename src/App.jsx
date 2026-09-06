@@ -78,6 +78,9 @@ const [nombreEditado, setNombreEditado] =
 const [colorEditado, setColorEditado] =
   useState('#6754e7')
 
+const [parentescoEditado, setParentescoEditado] =
+  useState('')
+
 const [guardandoEdicion, setGuardandoEdicion] =
   useState(false)
 
@@ -727,6 +730,7 @@ const [mensajeEdicion, setMensajeEdicion] =
               user_id,
               nombre,
               color,
+              parentesco,
               avatar_url,
               rol,
               tipo
@@ -765,6 +769,7 @@ const [mensajeEdicion, setMensajeEdicion] =
           user_id,
           nombre,
           color,
+          parentesco,
           avatar_url,
           rol,
           tipo
@@ -1456,6 +1461,7 @@ const [mensajeEdicion, setMensajeEdicion] =
         user_id,
         nombre,
         color,
+        parentesco,
         avatar_url,
         rol,
         tipo
@@ -1562,6 +1568,7 @@ const abrirEditarIntegrante = (miembro) => {
   setMiembroEditando(miembro)
   setNombreEditado(miembro.nombre)
   setColorEditado(miembro.color)
+  setParentescoEditado(miembro.parentesco || '')
   setMensajeEdicion('')
 }
 
@@ -1569,6 +1576,7 @@ const cerrarEditarIntegrante = () => {
   setMiembroEditando(null)
   setNombreEditado('')
   setColorEditado('#6754e7')
+  setParentescoEditado('')
   setMensajeEdicion('')
 }
 
@@ -1593,7 +1601,8 @@ const guardarEdicionIntegrante = async (e) => {
       .from('miembros_familia')
       .update({
         nombre: nombreLimpio,
-        color: colorEditado
+        color: colorEditado,
+        parentesco: parentescoEditado || null
       })
       .eq('id', miembroEditando.id)
       .select(`
@@ -1601,6 +1610,7 @@ const guardarEdicionIntegrante = async (e) => {
         user_id,
         nombre,
         color,
+        parentesco,
         avatar_url,
         rol,
         tipo
@@ -4965,25 +4975,15 @@ const eliminarCuentaDeFamilia = async () => {
                           'perfil'
                         ? 'Perfil familiar'
                         : 'Miembro'}
+                      {miembro.parentesco
+                        ? ` · ${miembro.parentesco}`
+                        : ''}
                     </span>
-
-                    <div className="member-color-row">
-                      <span
-                        className="member-color"
-                        style={{
-                          backgroundColor:
-                            miembro.color
-                        }}
-                      />
-
-                      <small>
-                        {miembro.color}
-                      </small>
-                    </div>
                   </div>
 
                   <div className="family-card-actions">
-                    {miembro.tipo === 'perfil' && (
+                    {(miembro.tipo === 'perfil' ||
+                      miembro.user_id === usuario.id) && (
                       <button
                         className="edit-member-button"
                         onClick={() =>
@@ -6338,6 +6338,31 @@ const eliminarCuentaDeFamilia = async () => {
                   }
                   autoFocus
                 />
+              </div>
+
+              <div className="member-form-field">
+                <label>Parentesco</label>
+
+                <select
+                  value={parentescoEditado}
+                  onChange={(e) =>
+                    setParentescoEditado(e.target.value)
+                  }
+                >
+                  <option value="">Sin especificar</option>
+                  <option value="Papá">Papá</option>
+                  <option value="Mamá">Mamá</option>
+                  <option value="Hijo">Hijo</option>
+                  <option value="Hija">Hija</option>
+                  <option value="Pareja">Pareja</option>
+                  <option value="Abuelo">Abuelo</option>
+                  <option value="Abuela">Abuela</option>
+                  <option value="Hermano">Hermano</option>
+                  <option value="Hermana">Hermana</option>
+                  <option value="Tío">Tío</option>
+                  <option value="Tía">Tía</option>
+                  <option value="Otro">Otro</option>
+                </select>
               </div>
 
               <div className="member-form-field">
