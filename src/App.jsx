@@ -750,6 +750,58 @@ const [mensajeEdicion, setMensajeEdicion] =
 
     cargarFamilia()
   }, [usuario])
+  useEffect(() => {
+  if (!familia?.id) return
+
+  const recargarMiembrosFamilia = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('miembros_familia')
+        .select(`
+          id,
+          user_id,
+          nombre,
+          color,
+          avatar_url,
+          rol,
+          tipo
+        `)
+        .eq('familia_id', familia.id)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        throw error
+      }
+
+      setMiembros(data ?? [])
+    } catch (error) {
+      console.error(
+        'Error al actualizar integrantes en tiempo real:',
+        error
+      )
+    }
+  }
+
+  const canalMiembrosFamilia = supabase
+    .channel(`miembros-familia-${familia.id}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'miembros_familia',
+        filter: `familia_id=eq.${familia.id}`
+      },
+      () => {
+        recargarMiembrosFamilia()
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(canalMiembrosFamilia)
+  }
+}, [familia?.id])
 
   useEffect(() => {
     const cargarEventos = async () => {
