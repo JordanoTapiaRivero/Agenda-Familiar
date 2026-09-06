@@ -2116,9 +2116,17 @@ const eliminarCuentaDeFamilia = async () => {
 
   const eventosHoy = eventos.filter((evento) => esHoy(evento.fecha_inicio))
 
+  const inicioHoy = new Date()
+  inicioHoy.setHours(0, 0, 0, 0)
+
+  const eventosVisibles = eventos.filter(
+  (evento) => new Date(evento.fecha_inicio) >= inicioHoy
+  )
+
   const proximoEvento =
-    eventos.find((evento) => new Date(evento.fecha_inicio) >= new Date()) ??
-    null
+  eventosVisibles.find(
+    (evento) => new Date(evento.fecha_inicio) >= new Date()
+  ) ?? null
 
   const cerrarModalTarea = () => {
     setMostrarModalTarea(false)
@@ -3994,7 +4002,7 @@ const eliminarCuentaDeFamilia = async () => {
               </div>
             ) : (
               <div className="calendar-event-list">
-                {eventos.map((evento) => {
+                {eventosVisibles.map((evento) => {
                   const creador = miembros.find(
                     (miembro) =>
                       miembro.user_id === evento.creado_por
