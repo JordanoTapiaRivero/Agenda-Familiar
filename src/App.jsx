@@ -61,6 +61,9 @@ function App() {
   const [colorNuevoIntegrante, setColorNuevoIntegrante] =
     useState('#6754e7')
 
+  const [parentescoNuevoIntegrante, setParentescoNuevoIntegrante] =
+    useState('')
+
   const [guardandoIntegrante, setGuardandoIntegrante] =
     useState(false)
 
@@ -1489,6 +1492,7 @@ const [mensajeEdicion, setMensajeEdicion] =
     setMostrarModalIntegrante(false)
     setNombreNuevoIntegrante('')
     setColorNuevoIntegrante('#6754e7')
+    setParentescoNuevoIntegrante('')
     setMensajeIntegrante('')
   }
 
@@ -1514,6 +1518,7 @@ const [mensajeEdicion, setMensajeEdicion] =
           user_id: null,
           nombre: nombreLimpio,
           color: colorNuevoIntegrante,
+          parentesco: parentescoNuevoIntegrante || null,
           avatar_url: null,
           rol: 'miembro',
           tipo: 'perfil'
@@ -1523,6 +1528,7 @@ const [mensajeEdicion, setMensajeEdicion] =
           user_id,
           nombre,
           color,
+          parentesco,
           avatar_url,
           rol,
           tipo
@@ -6176,6 +6182,33 @@ const eliminarCuentaDeFamilia = async () => {
                   }
                   autoFocus
                 />
+              </div>
+
+              <div className="member-form-field">
+                <label>
+                  Parentesco
+                </label>
+
+                <select
+                  value={parentescoNuevoIntegrante}
+                  onChange={(e) =>
+                    setParentescoNuevoIntegrante(e.target.value)
+                  }
+                >
+                  <option value="">Sin especificar</option>
+                  <option value="Papá">Papá</option>
+                  <option value="Mamá">Mamá</option>
+                  <option value="Hijo">Hijo</option>
+                  <option value="Hija">Hija</option>
+                  <option value="Pareja">Pareja</option>
+                  <option value="Abuelo">Abuelo</option>
+                  <option value="Abuela">Abuela</option>
+                  <option value="Hermano">Hermano</option>
+                  <option value="Hermana">Hermana</option>
+                  <option value="Tío">Tío</option>
+                  <option value="Tía">Tía</option>
+                  <option value="Otro">Otro</option>
+                </select>
               </div>
 
               <div className="member-form-field">
