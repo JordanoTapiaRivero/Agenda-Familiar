@@ -111,6 +111,7 @@ const [mensajeEdicion, setMensajeEdicion] =
   const [asignadosEvento, setAsignadosEvento] = useState([])
   const [guardandoEvento, setGuardandoEvento] = useState(false)
   const [mensajeEvento, setMensajeEvento] = useState('')
+  const [vistaCalendario, setVistaCalendario] = useState('proximos')
 
   const [mostrarConfirmacionSalir, setMostrarConfirmacionSalir] =
     useState(false)
@@ -2188,13 +2189,33 @@ const eliminarCuentaDeFamilia = async () => {
   inicioHoy.setHours(0, 0, 0, 0)
 
   const eventosVisibles = eventos.filter(
-  (evento) => new Date(evento.fecha_inicio) >= inicioHoy
+    (evento) => new Date(evento.fecha_inicio) >= inicioHoy
   )
 
+  const eventosHistorial = eventos
+    .filter((evento) => new Date(evento.fecha_inicio) < inicioHoy)
+    .sort(
+      (a, b) =>
+        new Date(b.fecha_inicio) - new Date(a.fecha_inicio)
+    )
+
+  const eventosMostrados =
+    vistaCalendario === 'historial'
+      ? eventosHistorial
+      : eventosVisibles
+
   const proximoEvento =
-  eventosVisibles.find(
-    (evento) => new Date(evento.fecha_inicio) >= new Date()
-  ) ?? null
+    eventosVisibles.find(
+      (evento) => new Date(evento.fecha_inicio) >= new Date()
+    ) ?? null
+
+  const obtenerSaludo = () => {
+    const hora = new Date().getHours()
+
+    if (hora < 12) return 'Buenos días'
+    if (hora < 20) return 'Buenas tardes'
+    return 'Buenas noches'
+  }
 
   const cerrarModalTarea = () => {
     setMostrarModalTarea(false)
@@ -3545,7 +3566,7 @@ const eliminarCuentaDeFamilia = async () => {
                 </p>
 
                 <h2>
-                  Buenos días,{' '}
+                  {obtenerSaludo()},{' '}
                   {usuario.user_metadata?.nombre ||
                     'Usuario'}{' '}
                   👋
@@ -4030,10 +4051,7 @@ const eliminarCuentaDeFamilia = async () => {
           <section className="calendar-management">
             <div className="calendar-management-header">
               <div>
-                <p className="eyebrow">CALENDARIO FAMILIAR</p>
-                <p className="subtitle">
-                  Organiza eventos, fechas importantes y recordatorios de la familia.
-                </p>
+                <p className="eyebrow"> ORGANIZA EVENTOS, FECHAS IMPORTANTES Y RECORDATORIOS DE LA FAMILIA.</p>
               </div>
 
               <button
@@ -4044,21 +4062,55 @@ const eliminarCuentaDeFamilia = async () => {
               </button>
             </div>
 
+            <div
+              role="tablist"
+              aria-label="Vista del calendario"
+              style={{
+                display: 'flex',
+                gap: '10px',
+                marginBottom: '18px',
+                flexWrap: 'wrap'
+              }}
+            >
+              <button
+                type="button"
+                className={
+                  vistaCalendario === 'proximos'
+                    ? 'add-member-button'
+                    : 'calendar-edit-button'
+                }
+                onClick={() => setVistaCalendario('proximos')}
+                aria-selected={vistaCalendario === 'proximos'}
+              >
+                📅 Próximos ({eventosVisibles.length})
+              </button>
+
+              <button
+                type="button"
+                className={
+                  vistaCalendario === 'historial'
+                    ? 'add-member-button'
+                    : 'calendar-edit-button'
+                }
+                onClick={() => setVistaCalendario('historial')}
+                aria-selected={vistaCalendario === 'historial'}
+              >
+                🕘 Historial ({eventosHistorial.length})
+              </button>
+            </div>
+
             {cargandoEventos ? (
               <div className="calendar-empty">
                 Cargando eventos...
               </div>
             ) : eventos.length === 0 ? (
               <div className="calendar-empty">
-                <div className="calendar-empty-icon">
-                  📅
-                </div>
+                <div className="calendar-empty-icon">📅</div>
 
                 <h3>Aún no hay eventos</h3>
 
                 <p>
-                  Crea el primer evento para comenzar a
-                  organizar a la familia.
+                  Crea el primer evento para comenzar a organizar a la familia.
                 </p>
 
                 <button
@@ -4068,9 +4120,36 @@ const eliminarCuentaDeFamilia = async () => {
                   Crear primer evento
                 </button>
               </div>
+            ) : eventosMostrados.length === 0 ? (
+              <div className="calendar-empty">
+                <div className="calendar-empty-icon">
+                  {vistaCalendario === 'historial' ? '🕘' : '📅'}
+                </div>
+
+                <h3>
+                  {vistaCalendario === 'historial'
+                    ? 'El historial está vacío'
+                    : 'No hay próximos eventos'}
+                </h3>
+
+                <p>
+                  {vistaCalendario === 'historial'
+                    ? 'Los eventos de días anteriores aparecerán aquí automáticamente.'
+                    : 'Cuando agregues un nuevo evento, aparecerá aquí.'}
+                </p>
+
+                {vistaCalendario === 'proximos' && (
+                  <button
+                    className="member-save-button"
+                    onClick={abrirNuevoEvento}
+                  >
+                    Crear nuevo evento
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="calendar-event-list">
-                {eventosVisibles.map((evento) => {
+                {eventosMostrados.map((evento) => {
                   const creador = miembros.find(
                     (miembro) =>
                       miembro.user_id === evento.creado_por
@@ -4118,14 +4197,19 @@ const eliminarCuentaDeFamilia = async () => {
                             </p>
                           </div>
 
-                          {evento.recordatorio_minutos !==
-                            null && (
+                          {vistaCalendario === 'historial' ? (
                             <span className="calendar-reminder">
-                              🔔{' '}
-                              {obtenerTextoRecordatorio(
-                                evento.recordatorio_minutos
-                              )}
+                              ✓ Finalizado
                             </span>
+                          ) : (
+                            evento.recordatorio_minutos !== null && (
+                              <span className="calendar-reminder">
+                                🔔{' '}
+                                {obtenerTextoRecordatorio(
+                                  evento.recordatorio_minutos
+                                )}
+                              </span>
+                            )
                           )}
                         </div>
 
@@ -4174,7 +4258,8 @@ const eliminarCuentaDeFamilia = async () => {
                               {creador?.nombre || 'Miembro'}
                             </small>
 
-                            {evento.creado_por === usuario.id && (
+                            {vistaCalendario === 'proximos' &&
+                              evento.creado_por === usuario.id && (
                               <button
                                 type="button"
                                 className="calendar-edit-button"
@@ -4198,10 +4283,8 @@ const eliminarCuentaDeFamilia = async () => {
           <section className="tasks-management">
             <div className="tasks-management-header">
               <div>
-                <p className="eyebrow">TAREAS FAMILIARES</p>
-                <p className="subtitle">
-                  Organiza pendientes y reparte responsabilidades.
-                </p>
+                <p className="eyebrow">ORGANIZA PENDIENTES Y REPARTE RESPONSABILIDADES.</p>
+                
               </div>
 
               <button
@@ -4348,10 +4431,7 @@ const eliminarCuentaDeFamilia = async () => {
           <section className="shopping-management">
             <div className="shopping-management-header">
               <div>
-                <p className="eyebrow">COMPRAS FAMILIARES</p>
-                <p className="subtitle">
-                  Crea listas y organiza las compras de la familia.
-                </p>
+                <p className="eyebrow">CREA LISTAS Y ORGANIZA LAS COMPRAS DE LA FAMILIA.</p>
               </div>
 
               <button
@@ -4547,10 +4627,8 @@ const eliminarCuentaDeFamilia = async () => {
           <section className="expenses-management">
             <div className="expenses-management-header">
               <div>
-                <p className="eyebrow">GASTOS FAMILIARES</p>
-                <p className="subtitle">
-                  Registra y revisa los gastos compartidos de la familia.
-                </p>
+                <p className="eyebrow">REGISTRA Y REVISA LOS GASTOS COMPARTIDOS DE LA FAMILIA.</p>
+                
               </div>
 
               <button
@@ -4874,9 +4952,7 @@ const eliminarCuentaDeFamilia = async () => {
           <section className="family-management">
             <div className="family-management-header">
               <div>
-                <p className="eyebrow">
-                  FAMILIA
-                </p>
+                
 
                 <h2>{familia.nombre}</h2>
 
